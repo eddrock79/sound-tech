@@ -8,7 +8,7 @@
   var VENUE="sound-tech";
   try{ var P="bl:"+VENUE+":",ls=window.localStorage,_g=ls.getItem.bind(ls),_s=ls.setItem.bind(ls),_r=ls.removeItem.bind(ls);
     ls.getItem=function(k){return _g(P+k);};ls.setItem=function(k,x){return _s(P+k,x);};ls.removeItem=function(k){return _r(P+k);}; }catch(e){}
-  var CONFIG_SHEET_ID="PUT_CENTRAL_CONFIG_SHEET_ID_HERE",CACHE_KEY="bl_cfg_cache",FETCH_MS=7000;
+  var CONFIG_SHEET_ID="1EI9EvoMWQnYukiNMaB_XlIlMED1zvRuD8dNhj9iGSmY",CACHE_KEY="bl_cfg_cache",FETCH_MS=7000;
   var DEFAULTS={venueKey:VENUE,venueName:"Banshee Sound Tech",
     weeklyJobs:"PUT_WEEKLY_JOBS_SHEET_ID_HERE",endOfNight:"PUT_END_OF_NIGHT_SHEET_ID_HERE",cocktails:"",
     notesScript:"PUT_NOTES_APPS_SCRIPT_EXEC_URL_HERE",cleaningScript:"PUT_CLEANING_APPS_SCRIPT_EXEC_URL_HERE",eonScript:"PUT_EON_APPS_SCRIPT_EXEC_URL_HERE",

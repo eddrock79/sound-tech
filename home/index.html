@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>The Banshee Sound Tech — Staff Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0d0d0f; --surface:#17171a; --surface2:#1f1f24; --border:#2a2a30;
+    --accent:#e8b84b; --accent-dim:rgba(232,184,75,0.12);
+    --green:#3ecf6e; --green-dim:rgba(62,207,110,0.12);
+    --red:#e85d5d; --red-dim:rgba(232,93,93,0.1);
+    --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
+    --text:#e8e8ec; --muted:#6b6b78;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+  /* PIN */
+  #pin-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:28px;}
+  #pin-screen.hidden{display:none;}
+  .pin-logo{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;color:var(--accent);}
+  .pin-sub{font-size:12px;color:var(--muted);margin-top:-20px;letter-spacing:2px;text-transform:uppercase;}
+  .pin-dots{display:flex;gap:16px;}
+  .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:background .15s,border-color .15s;}
+  .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+  .pin-dot.error{background:var(--red);border-color:var(--red);}
+  .pin-error{font-size:13px;color:var(--red);height:18px;text-align:center;}
+  .pin-loading{font-size:12px;color:var(--muted);height:18px;text-align:center;}
+  .pin-keypad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;}
+  .pin-key{height:72px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:22px;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none;}
+  .pin-key:active{background:var(--surface2);transform:scale(.94);}
+  .pin-key.zero{grid-column:2;}
+  .pin-key.del{font-size:16px;color:var(--muted);}
+
+  /* APP */
+  #app{display:none;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--accent);}
+  .topbar-right{display:flex;align-items:center;gap:10px;}
+  .topbar-centre-logo{position:absolute;left:50%;transform:translateX(-50%);height:34px;width:auto;pointer-events:none;}
+  .topbar-role{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .topbar-role.staff{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+  .topbar-role.manager{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);}
+  .topbar-date{font-size:12px;color:var(--muted);}
+
+  /* Nav */
+  .nav-bar{display:flex;gap:8px;background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;flex-wrap:wrap;}
+  .nav-btn{padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--muted);text-decoration:none;display:inline-block;-webkit-tap-highlight-color:transparent;}
+  .nav-btn.current{background:var(--accent-dim);color:var(--accent);border-color:var(--accent);}
+  .nav-btn.mgr{background:var(--purple-dim);color:var(--purple);border-color:var(--purple);}
+
+  .main{max-width:720px;margin:0 auto;padding:16px 16px;display:flex;flex-direction:column;gap:14px;}
+
+  /* Cards */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .card-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);margin-bottom:10px;}
+
+  /* Top row — weather + events side by side */
+  .top-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .top-row.solo{grid-template-columns:1fr;}
+  @media(max-width:560px){.top-row{grid-template-columns:1fr;}}
+  /* smart ticker */
+  .ticker{overflow:hidden;white-space:nowrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;height:34px;display:flex;align-items:center;margin-bottom:14px;}
+  .ticker .tag{flex:0 0 auto;font-size:14px;padding:0 12px;color:var(--accent);border-right:1px solid var(--border);height:100%;display:flex;align-items:center;}
+  .ticker .win{flex:1;overflow:hidden;}
+  .ticker .track{display:inline-block;white-space:nowrap;padding-left:100%;font-size:12px;color:var(--muted);animation:tickerscroll 40s linear infinite;}
+  .ticker .track b{color:var(--text);font-weight:600;}
+  .ticker .track .sep{color:var(--accent);margin:0 16px;}
+  .ticker:hover .track{animation-play-state:paused;}
+  @keyframes tickerscroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+
+  /* Weather compact */
+  .wx-icon{font-size:32px;margin-bottom:4px;}
+  .wx-temp{font-size:26px;font-weight:600;line-height:1;}
+  .wx-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+  .wx-meta{font-size:11px;color:var(--muted);margin-top:4px;}
+  .wx-meta span{color:var(--text);}
+
+  /* Events */
+  .event-item{display:flex;gap:14px;padding:10px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:6px;}
+  .event-item:last-child{margin-bottom:0;}
+  .event-date{font-size:11px;font-weight:700;color:var(--accent);min-width:44px;padding-top:2px;letter-spacing:.5px;}
+  .event-name{font-size:13px;font-weight:500;color:var(--text);line-height:1.4;}
+  .event-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+  .crew-chip{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;margin:3px 5px 0 0;font-size:13px;color:var(--text);}
+  .crew-time{color:var(--muted);font-size:11px;}
+
+  /* Notice board */
+  .notice-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .notice-edit-btn{font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .notice-content{font-size:14px;color:var(--text);line-height:1.6;}
+  .notice-content.empty{color:var(--muted);font-style:italic;}
+  .notice-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:12px;line-height:1.6;resize:vertical;min-height:80px;display:none;}
+  .notice-textarea:focus{outline:none;border-color:var(--accent);}
+  .notice-save-btn{margin-top:8px;display:none;padding:8px 18px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+
+  /* Handover notes */
+  .note-item{padding:8px 12px;border-left:3px solid var(--accent);border-radius:0 7px 7px 0;background:var(--surface2);margin-bottom:6px;}
+  .note-item:last-child{margin-bottom:0;}
+  .note-src{font-size:10px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+  .note-text{font-size:13px;color:var(--text);line-height:1.45;white-space:pre-wrap;}
+  .note-time{font-size:10px;color:var(--muted);margin-top:3px;}
+
+  /* Joke */
+  .joke-setup{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:6px;}
+  .joke-punchline{font-size:14px;color:var(--accent);font-weight:500;line-height:1.6;}
+  .joke-single{font-size:14px;color:var(--text);line-height:1.6;}
+  .joke-btn{margin-top:10px;font-size:12px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .joke-btn:hover{color:var(--text);}
+  .muted-text{font-size:13px;color:var(--muted);font-style:italic;}
+</style>
+<script src="../bl-config.js"></script>
+<script src="../bl-auth.js"></script>
+</head>
+<body>
+
+<!-- PIN SCREEN — unchanged from original -->
+<div id="pin-screen" style="display:none">
+  <div class="pin-logo">🎛️ Banshee Sound</div>
+  <div class="pin-sub">Staff Hub</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-loading" id="pin-loading">Loading…</div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-keypad" id="pin-keypad" style="opacity:.4;pointer-events:none">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key zero" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar" style="position:relative;">
+    <div class="topbar-logo">🎛️ Banshee Sound Tech</div>
+    <img class="topbar-centre-logo" src="../logo.jpg" alt="The Banshee Sound Tech">
+    <div class="topbar-right">
+      <div class="topbar-role" id="topbar-role" style="display:none"></div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+  </div>
+
+  <div class="nav-bar">
+    <span class="nav-btn current">🏠 Home</span>
+    <a class="nav-btn" id="nav-wj" href="#">📋 Weekly Jobs</a>
+    <a class="nav-btn" href="../end-of-night">🌙 End Of Night</a>
+    <a class="nav-btn" href="../rotas">📅 Rotas</a>
+    <a class="nav-btn mgr" id="nav-dash" href="../dashboard" style="display:none">📊 Dashboard</a>
+    <button class="nav-btn" onclick="logOut()" style="cursor:pointer;color:var(--red);border-color:var(--red)">🔒 Log Out</button>
+  </div>
+
+  <div class="main">
+
+    <!-- Smart ticker -->
+    <div class="ticker" id="ticker" style="display:none">
+      <div class="tag">📣</div>
+      <div class="win"><div class="track" id="ticker-track"></div></div>
+    </div>
+
+    <!-- On Tonight + Weather (weather hides on busy nights) -->
+    <div class="top-row" id="top-row">
+      <div class="card" id="tonight-card" style="display:none">
+        <div class="card-title" id="tonight-title">🌙 On Tonight</div>
+        <div id="tonight-content"></div>
+      </div>
+      <div class="card" id="weather-card">
+        <div class="card-title">🌤 Edinburgh</div>
+        <div id="wx-content"><div class="muted-text">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- Notice Board -->
+    <div class="card">
+      <div class="notice-header">
+        <div class="card-title" style="margin-bottom:0">📋 Notice Board</div>
+        <button class="notice-edit-btn" id="notice-edit-btn" onclick="requestNoticeEdit()" style="display:none">✏ Edit</button>
+      </div>
+      <div class="notice-content" id="notice-content"></div>
+      <textarea class="notice-textarea" id="notice-textarea" placeholder="Type a message for staff here…"></textarea>
+      <button class="notice-save-btn" id="notice-save-btn" onclick="saveNotice()">Save Notice</button>
+    </div>
+
+    <!-- Handover Notes -->
+    <div class="card">
+      <div class="card-title">📝 Handover Notes</div>
+      <div id="handover-content"><div class="muted-text">No handover notes yet.</div></div>
+    </div>
+
+    <!-- Upcoming Events -->
+    <div class="card">
+      <div class="card-title">📅 Upcoming Events</div>
+      <div id="events-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SUPERVISOR MODAL — unchanged from original -->
+<div id="super-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:300;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:380px">
+    <h3 style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:8px">Supervisor Access</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter supervisor password to edit the notice board.</p>
+    <div class="pin-dots" style="justify-content:center;margin-bottom:12px">
+      <div class="pin-dot" id="spd0"></div>
+      <div class="pin-dot" id="spd1"></div>
+      <div class="pin-dot" id="spd2"></div>
+      <div class="pin-dot" id="spd3"></div>
+    </div>
+    <div class="pin-error" id="super-error" style="text-align:center;margin-bottom:12px"></div>
+    <div class="pin-keypad" style="margin:0 auto 16px">
+      <button class="pin-key" onclick="superKey('1')">1</button>
+      <button class="pin-key" onclick="superKey('2')">2</button>
+      <button class="pin-key" onclick="superKey('3')">3</button>
+      <button class="pin-key" onclick="superKey('4')">4</button>
+      <button class="pin-key" onclick="superKey('5')">5</button>
+      <button class="pin-key" onclick="superKey('6')">6</button>
+      <button class="pin-key" onclick="superKey('7')">7</button>
+      <button class="pin-key" onclick="superKey('8')">8</button>
+      <button class="pin-key" onclick="superKey('9')">9</button>
+      <button class="pin-key zero" onclick="superKey('0')">0</button>
+      <button class="pin-key del" onclick="superDel()">⌫</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button onclick="closeSuperModal()" style="padding:9px 18px;border-radius:8px;background:var(--surface2);color:var(--text);border:1px solid var(--border);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID_KEY='bl_home_sheet_id';
+const HANDOVER_KEY='bl_handover_notes';
+
+// Shared Notice Board + Handover, synced via the dedicated notes sheet's Apps Script.
+// Paste the deployed /exec URL of notes-AppsScript.gs here:
+const NOTES_SCRIPT_URL=BL_CFG.notesScript;
+const NOTICE_CACHE='bl_notice_list';     // cached JSON of the notice entries
+const HANDOVER_CACHE='bl_handover_list'; // cached JSON of the handover entries
+let sharedSyncFailed=false;
+
+// ── EVENTS — auto-fed from the rota's room rows (events.json, published by the NAS) ──
+const EVENTS_URL='../rotas/events.json';
+const EVENTS_CACHE='bl_events';
+let eventsFailed=false;
+function cachedEvents(){ try{return JSON.parse(localStorage.getItem(EVENTS_CACHE)||'[]');}catch(e){return [];} }
+async function loadEvents(){
+  renderEvents();                                   // show cached copy immediately
+  try{
+    const res=await fetch(EVENTS_URL+'?t='+Date.now());
+    if(!res.ok) throw new Error('http '+res.status);
+    const data=await res.json();
+    localStorage.setItem(EVENTS_CACHE,JSON.stringify(data.events||[]));
+    eventsFailed=false;
+  }catch(e){ eventsFailed=true; }
+  renderEvents();
+}
+
+// ── ON TONIGHT (rota crew, 7am-aware: a night counts until 7am next morning) ──
+const SHIFTS_URL='../rotas/shifts.json';
+const SHIFTS_CACHE='bl_shifts';
+const DOW_FULL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function rotaDayInfo(){
+  const n=new Date(); const d=new Date(n);
+  if(n.getHours()<7) d.setDate(d.getDate()-1);
+  const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return {iso, name:DOW_FULL[d.getDay()]};
+}
+function cachedShifts(){ try{return JSON.parse(localStorage.getItem(SHIFTS_CACHE)||'{}');}catch(e){return {};} }
+async function loadTonight(){
+  renderTonight();
+  try{
+    const res=await fetch(SHIFTS_URL+'?t='+Date.now());
+    if(res.ok){ const data=await res.json(); localStorage.setItem(SHIFTS_CACHE,JSON.stringify(data.days||{})); }
+  }catch(e){}
+  renderTonight();
+}
+const HIDE_WEATHER_CREW=7;   // busy night: this many+ rota'd hides weather & lets On Tonight fill the row
+function renderTonight(){
+  const card=document.getElementById('tonight-card');
+  const el=document.getElementById('tonight-content');
+  const wx=document.getElementById('weather-card');
+  const row=document.getElementById('top-row');
+  if(!card||!el) return;
+  const info=rotaDayInfo();
+  const crew=(cachedShifts()||{})[info.iso]||[];
+  const hasCrew=crew.length>0;
+  const busy=crew.length>=HIDE_WEATHER_CREW;
+  card.style.display=hasCrew?'':'none';
+  if(wx) wx.style.display=(hasCrew&&busy)?'none':'';
+  if(row) row.classList.toggle('solo',(!hasCrew)||busy);   // single column when only one card shows
+  if(hasCrew){
+    document.getElementById('tonight-title').textContent='🌙 On Tonight — '+info.name;
+    el.innerHTML=crew.map(c=>`<span class="crew-chip">${escHtml(c.name)}${c.start?` <span class="crew-time">${escHtml(c.start)}</span>`:''}</span>`).join('');
+  }
+}
+
+let livePin=null, liveSuper=null, pinEntry='', superEntry='', sheetId='', isManager=false;
+
+// ── CSV / HELPERS ──
+function parseCSV(line){const cols=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur.trim());cur='';}else{cur+=c;}}cols.push(cur.trim());return cols;}
+function clean(s){return(s||'').replace(/^"|"$/g,'').trim();}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── LOAD PINS — same logic as original, reads B1/B2 ──
+async function loadPINFromSheet(id){
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Settings`;
+    const res=await fetch(url);if(!res.ok)throw new Error();
+    const csv=await res.text();
+    const lines=csv.split('\n').filter(l=>l.trim());
+    const found=[];
+    for(const line of lines){
+      const cols=parseCSV(line);
+      const val=(clean(cols[1])||clean(cols[0])).trim();
+      if(/^\d+$/.test(val))found.push(val);
+      if(found.length===2)break;
+    }
+    livePin=found[0]||'1234';
+    liveSuper=found[1]||'1111';
+    // Also grab script URL from B3
+    for(const line of lines){
+      const cols=parseCSV(line);
+      const val=(clean(cols[1])||clean(cols[0])).trim();
+      if(val.startsWith('https://script.google.com')){localStorage.setItem('bl_script_url',val);break;}
+    }
+  }catch(e){livePin='1234';liveSuper='1111';}
+}
+
+// ── BOOT ──
+(function boot(){
+  const urlParams=new URLSearchParams(window.location.search);
+  const urlSheet=urlParams.get('sheet');
+  if(urlSheet)localStorage.setItem(SHEET_ID_KEY,urlSheet);
+  sheetId=localStorage.getItem(SHEET_ID_KEY)||'';
+  BLAuth.init({appName:'Staff Hub', require:'staff', onReady:function(){ showApp(); }});
+})();
+
+// ── PIN ──
+function pinKey(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots('pd',pinEntry);if(pinEntry.length===4)setTimeout(checkPIN,120);}
+function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots('pd',pinEntry);document.getElementById('pin-error').textContent='';}
+function updateDots(prefix,entry){for(let i=0;i<4;i++)document.getElementById(prefix+i).className='pin-dot'+(i<entry.length?' filled':'');}
+function checkPIN(){
+  if(pinEntry.trim()===(livePin||'').trim()){
+    isManager=false;
+    sessionStorage.setItem('bl_home_unlocked','yes');
+    sessionStorage.removeItem('bl_home_super');
+    showApp();
+  } else if(pinEntry.trim()===(liveSuper||'').trim()){
+    isManager=true;
+    sessionStorage.setItem('bl_home_unlocked','yes');
+    sessionStorage.setItem('bl_home_super','yes');
+    showApp();
+  } else {
+    for(let i=0;i<4;i++)document.getElementById('pd'+i).className='pin-dot error';
+    document.getElementById('pin-error').textContent='Incorrect PIN';
+    setTimeout(()=>{pinEntry='';updateDots('pd',pinEntry);document.getElementById('pin-error').textContent='';},900);
+  }
+}
+
+// ── SUPERVISOR MODAL ──
+function requestNoticeEdit(){
+  BLAuth.requireManager(function(){ isManager=true; openNoticeEdit(); }, 'Manager PIN to edit the notice board');
+}
+function superKey(d){if(superEntry.length>=4)return;superEntry+=d;updateDots('spd',superEntry);if(superEntry.length===4)setTimeout(checkSuper,120);}
+function superDel(){superEntry=superEntry.slice(0,-1);updateDots('spd',superEntry);document.getElementById('super-error').textContent='';}
+function checkSuper(){
+  if(superEntry.trim()===(liveSuper||'').trim()){
+    sessionStorage.setItem('bl_home_super','yes');
+    isManager=true;closeSuperModal();openNoticeEdit();
+  } else {
+    for(let i=0;i<4;i++)document.getElementById('spd'+i).className='pin-dot error';
+    document.getElementById('super-error').textContent='Incorrect password';
+    setTimeout(()=>{superEntry='';updateDots('spd',superEntry);document.getElementById('super-error').textContent='';},900);
+  }
+}
+function closeSuperModal(){document.getElementById('super-modal').style.display='none';superEntry='';}
+
+// ── SHOW APP ──
+function showApp(){
+  isManager=BLAuth.isManager();
+  document.getElementById('pin-screen').classList.add('hidden');
+  document.getElementById('app').style.display='block';
+  document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+
+  // Role badge — only show for manager
+  if(isManager){
+    const r=document.getElementById('topbar-role');
+    r.textContent='⭐ Manager';r.className='topbar-role manager';r.style.display='inline-block';
+    document.getElementById('nav-dash').style.display='inline-block';
+    document.getElementById('notice-edit-btn').style.display='inline-block';
+  }else{
+    document.getElementById('nav-dash').style.display='none';
+  }
+
+  // Weekly Jobs nav link with sheet param
+  const wjUrl=sheetId?`../weekly-cleaning?sheet=${sheetId}`:'../weekly-cleaning';
+  document.getElementById('nav-wj').href=wjUrl;
+
+  // Pass session to other apps
+  sessionStorage.setItem('bl_home_unlocked','yes');
+  sessionStorage.setItem('bl_home_role',isManager?'manager':'staff');
+
+  loadNotice();
+  renderHandover();
+  loadEvents().then(buildTicker);
+  loadTonight().then(buildTicker);
+  loadWeather();
+  buildTicker();
+  // pull the shared notice + handover from the sheet, then re-render
+  fetchShared().then(()=>{ loadNotice(); renderHandover(); buildTicker(); });
+}
+
+// ── SHARED NOTICE BOARD + HANDOVER (synced via notes sheet) ──
+function tidyNote(t){
+  return (t||'')
+    .replace(/\r/g,'')
+    .replace(/[ \t]+\n/g,'\n')   // strip trailing spaces on lines
+    .replace(/\n{3,}/g,'\n\n')   // collapse 3+ blank lines to one gap
+    .trim();                     // drop leading/trailing blank lines
+}
+function fmtList(entries, emptyMsg){
+  if(!entries||!entries.length){
+    return '<div class="muted-text">'+emptyMsg+(sharedSyncFailed?' (offline — showing last saved)':'')+'</div>';
+  }
+  const banner=sharedSyncFailed?'<div class="muted-text" style="color:var(--red);margin-bottom:6px">⚠ Couldn’t sync — showing last saved copy</div>':'';
+  return banner+entries.map(n=>`
+    <div class="note-item">
+      <div class="note-src">${escHtml(n.date||'')}</div>
+      <div class="note-text">${escHtml(tidyNote(n.note||''))}</div>
+    </div>`).join('');
+}
+
+async function fetchShared(){
+  try{
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),8000);
+    const res=await fetch(NOTES_SCRIPT_URL+'?action=getShared&_='+Date.now(),{signal:ctrl.signal});
+    clearTimeout(t);
+    const data=await res.json();
+    if(!data.ok) throw new Error(data.error||'bad response');
+    sharedSyncFailed=false;
+    localStorage.setItem(NOTICE_CACHE,JSON.stringify(data.notice||[]));
+    localStorage.setItem(HANDOVER_CACHE,JSON.stringify(data.notes||[]));
+    return data;
+  }catch(e){
+    sharedSyncFailed=true;
+    return null;
+  }
+}
+
+function cachedNotice(){ try{return JSON.parse(localStorage.getItem(NOTICE_CACHE)||'[]');}catch(e){return [];} }
+function cachedHandover(){ try{return JSON.parse(localStorage.getItem(HANDOVER_CACHE)||'[]');}catch(e){return [];} }
+
+function loadNotice(){
+  document.getElementById('notice-content').innerHTML=fmtList(cachedNotice(),'No notices in the last 10 days.');
+}
+function openNoticeEdit(){
+  document.getElementById('notice-textarea').value='';
+  document.getElementById('notice-textarea').placeholder='Type a new notice — it will be dated today and added to the top…';
+  document.getElementById('notice-content').style.display='none';
+  document.getElementById('notice-textarea').style.display='block';
+  document.getElementById('notice-save-btn').style.display='inline-block';
+  document.getElementById('notice-edit-btn').style.display='none';
+}
+async function saveNotice(){
+  const val=document.getElementById('notice-textarea').value.trim();
+  const btn=document.getElementById('notice-save-btn');
+  document.getElementById('notice-content').style.display='block';
+  document.getElementById('notice-textarea').style.display='none';
+  document.getElementById('notice-save-btn').style.display='none';
+  document.getElementById('notice-edit-btn').style.display=isManager?'inline-block':'none';
+  if(val){
+    try{
+      const res=await fetch(NOTES_SCRIPT_URL,{method:'POST',body:JSON.stringify({board:'notice',note:val})});
+      const data=await res.json();
+      if(data.ok){
+        sharedSyncFailed=false;
+        localStorage.setItem(NOTICE_CACHE,JSON.stringify(data.notice||[]));
+        localStorage.setItem(HANDOVER_CACHE,JSON.stringify(data.notes||[]));
+      } else { sharedSyncFailed=true; }
+    }catch(e){ sharedSyncFailed=true; }
+  }
+  loadNotice();
+}
+
+// ── HANDOVER NOTES ──
+// Read-only aggregation of the per-day handover notes written in Weekly Jobs
+// and End Of Night, synced via the notes sheet (cached in HANDOVER_CACHE by
+// fetchShared). Home never edits these — it only ever shows what's combined.
+function renderHandover(){
+  const el=document.getElementById('handover-content');
+  const notes=cachedHandover().filter(n=>n && (n.note||n.text));
+  if(!notes.length){
+    el.innerHTML='<div class="muted-text">No handover notes'+(sharedSyncFailed?' (offline — showing last saved)':'')+'.</div>';
+    return;
+  }
+  const banner=sharedSyncFailed?'<div class="muted-text" style="color:var(--red);margin-bottom:6px">⚠ Couldn’t sync — showing last saved copy</div>':'';
+  el.innerHTML=banner+notes.map(n=>{
+    const label=[n.src,n.day].filter(Boolean).join(' · ') || n.date || 'Handover note';
+    const meta=[n.author,n.time].filter(Boolean).join(' · ');
+    return `<div class="note-item">
+      <div class="note-src">${escHtml(label)}</div>
+      <div class="note-text">${escHtml(tidyNote(n.note||n.text||''))}</div>
+      ${meta?`<div class="note-time">${escHtml(meta)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+
+// ── EVENTS ──
+function renderEvents(){
+  const el=document.getElementById('events-content');
+  const now=new Date();
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const DAY_NAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const upcoming=cachedEvents().map(e=>{
+    const p=(e.date||'').split('-');                 // YYYY-MM-DD
+    return {...e, d:new Date(+p[0],(+p[1])-1,+p[2])};
+  }).filter(e=>!isNaN(e.d) && e.d>=today).sort((a,b)=>a.d-b.d).slice(0,12);
+
+  if(!upcoming.length){
+    el.innerHTML='<div class="muted-text">No upcoming events'+(eventsFailed?' (offline — showing last saved)':'')+'.</div>';
+    return;
+  }
+
+  el.innerHTML=upcoming.map(e=>{
+    const isToday=e.d.toDateString()===today.toDateString();
+    const isTom=e.d.toDateString()===new Date(today.getFullYear(),today.getMonth(),today.getDate()+1).toDateString();
+    const lbl=isToday?'TODAY ◀':isTom?'TOMORROW':`${DAY_NAMES[e.d.getDay()]} ${e.d.getDate()} ${MON[e.d.getMonth()]}`;
+    return`<div class="event-item">
+      <div class="event-date" style="${isToday?'color:var(--accent)':''}">${lbl}</div>
+      <div>
+        <div class="event-name">${escHtml(e.what||'Event')}</div>
+        <div class="event-desc">${escHtml(e.room||'')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── WEATHER — compact ──
+const WX_ICONS={0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'🌨',73:'🌨',75:'🌨',80:'🌦',81:'🌧',82:'🌧',95:'⛈',96:'⛈',99:'⛈'};
+const WX_DESC={0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Showers',81:'Heavy showers',95:'Thunderstorm'};
+async function loadWeather(){
+  const el=document.getElementById('wx-content');
+  try{
+    const res=await fetch('https://api.open-meteo.com/v1/forecast?latitude=55.9533&longitude=-3.1883&current=temperature_2m,apparent_temperature,weathercode,windspeed_10m&timezone=Europe/London');
+    if(!res.ok)throw new Error();
+    const d=await res.json();
+    const c=d.current;
+    el.innerHTML=`
+      <div class="wx-icon">${WX_ICONS[c.weathercode]||'🌡'}</div>
+      <div class="wx-temp">${Math.round(c.temperature_2m)}°C</div>
+      <div class="wx-desc">${WX_DESC[c.weathercode]||'Variable'}</div>
+      <div class="wx-meta">Feels <span>${Math.round(c.apparent_temperature)}°</span></div>
+      <div class="wx-meta">💨 <span>${Math.round(c.windspeed_10m)} km/h</span></div>`;
+  }catch(e){el.innerHTML='<div class="muted-text">Unavailable</div>';}
+}
+
+function logOut(){
+  sessionStorage.removeItem('bl_home_unlocked');
+  sessionStorage.removeItem('bl_home_super');
+  sessionStorage.removeItem('bl_home_role');
+  BLAuth.logout();
+}
+// ── JOKE — fetches from JokeAPI, falls back to built-in list ──
+const FALLBACK_JOKES=[
+  {setup:'A man walks into a bar with a slab of tarmac under his arm.',punchline:'"A pint please, and one for the road."'},
+  {setup:'A grasshopper walks into a bar. The barman says "We have a drink named after you!"',punchline:'The grasshopper says "What, Gerald?"'},
+  {setup:'A bear walks into a bar and says "I\'ll have a pint of lager............ and a packet of crisps."',punchline:'"Why the big pause?" "I\'ve always had them, I\'m a bear."'},
+  {setup:'A neutron walks into a bar and asks how much. The barman says:',punchline:'"For you, no charge."'},
+  {setup:'An Englishman, an Irishman and a Scotsman walk into a bar.',punchline:'"Is this some kind of joke?"'},
+  {setup:'Two antennas got married in a bar.',punchline:'The ceremony was rubbish but the reception was brilliant.'},
+  {setup:'A Roman soldier walks into a bar, holds up two fingers and says',punchline:'"Five beers please."'},
+  {setup:'A man walks into a bar carrying jumper cables.',punchline:'"You can stay, but don\'t start anything."'},
+  {setup:'A pirate walks into a bar with a paper towel on his head.',punchline:'"Arrr, I\'ve got a Bounty on me head."'},
+  {setup:'A horse walks into a bar. Several customers get up and leave.',punchline:'They recognised the potential danger of the situation.'},
+  {setup:'Helium walks into a bar and orders a pint. The barman says "We don\'t serve noble gases here."',punchline:'Helium doesn\'t react.'},
+  {setup:'A skeleton walks into a bar and orders a beer.',punchline:'"Sorry, we don\'t serve spirits."'},
+  {setup:'A dyslexic man walks into a bra.',punchline:''},
+  {setup:'A photon checks into a hotel. The bellboy asks "Can I help with your luggage?"',punchline:'"No thanks, I\'m travelling light."'},
+  {setup:'A man walks into a library and asks for books about paranoia.',punchline:'The librarian whispers "They\'re right behind you."'},
+  {setup:'Why did the ghost go to the Banshee Sound Tech?',punchline:'It heard the spirits were lively.'},
+  {setup:'What\'s a banshee\'s favourite kind of music?',punchline:'Anything with a good wail.'},
+  {setup:'Why don\'t vampires drink at last orders?',punchline:'Too much pressure to neck it.'},
+  {setup:'Two ghosts walk into a bar.',punchline:'The barman says "Sorry, we don\'t serve spirits after midnight."'},
+  {setup:'A vampire walks into a bar and orders a Bloody Mary.',punchline:'"Hold the Mary."'},
+  {setup:'A zombie walks into a bar.',punchline:'"I\'ll have a beer… and whoever\'s on the brain platter."'},
+  {setup:'A werewolf walks into a bar and orders a drink.',punchline:'"Make it a howler."'},
+  {setup:'What\'s a ghost\'s favourite drink?',punchline:'A boo-s.'},
+  {setup:'Why are graveyards always so noisy?',punchline:'Because of all the coffin.'},
+  {setup:'Why did the skeleton go to the party alone?',punchline:'He had no body to go with.'},
+  {setup:'A mummy walks into a bar.',punchline:'He couldn\'t unwind.'},
+  {setup:'Why did the vampire check the Banshee Sound Tech\'s reviews?',punchline:'He was after fresh blood.'},
+];
+let fbIdx=Math.floor(Math.random()*FALLBACK_JOKES.length);
+
+// ── SMART TICKER (jokes + live tidbits, scrolls under the top bar) ──
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+async function fetchJokes(n){
+  try{
+    // Spooky/Pun/Misc only — keeps it horror & pub-friendly, no programmer jokes
+    const res=await fetch(`https://v2.jokeapi.dev/joke/Spooky,Pun,Misc?safe-mode&blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=twopart&amount=${n}`);
+    if(!res.ok) throw 0;
+    const d=await res.json();
+    const arr=Array.isArray(d.jokes)?d.jokes:(d.setup?[d]:[]);
+    return arr.filter(j=>j.setup&&j.delivery).map(j=>`${j.setup} — ${j.delivery}`);
+  }catch(e){ return []; }
+}
+let tickerJokes=[];
+async function ensureJokes(){
+  if(tickerJokes.length) return;
+  const curated=FALLBACK_JOKES.map(j=>j.punchline?`${j.setup} — ${j.punchline}`:j.setup);
+  const api=await fetchJokes(6);
+  // always feature several curated bar/horror jokes, blended with the API ones
+  const mix=[...shuffle(curated).slice(0, api.length?5:curated.length), ...api];
+  tickerJokes=shuffle(mix.length?mix:curated);
+}
+function noticeBit(){
+  const list=cachedNotice();
+  if(!list||!list.length) return '';
+  const n0=list[0];
+  const txt=(typeof n0==='string')?n0:(n0.note||n0.text||n0.message||'');
+  if(!txt) return '';
+  return `<b>📋 Notice:</b> ${escHtml(String(txt).split('\n')[0]).slice(0,140)}`;
+}
+function nextEventBit(){
+  const today=new Date(new Date().toDateString());
+  const ev=cachedEvents().map(e=>{const p=(e.date||'').split('-');return {...e,d:new Date(+p[0],(+p[1])-1,+p[2])};})
+    .filter(e=>!isNaN(e.d)&&e.d>=today).sort((a,b)=>a.d-b.d)[0];
+  if(!ev) return '';
+  const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const when=ev.d.toDateString()===today.toDateString()?'Tonight':DOW[ev.d.getDay()];
+  return `<b>📅 ${when}:</b> ${escHtml(ev.what||'Event')}${ev.room?` (${escHtml(ev.room)})`:''}`;
+}
+async function buildTicker(){
+  const bar=document.getElementById('ticker'), track=document.getElementById('ticker-track');
+  if(!bar||!track) return;
+  await ensureJokes();
+  const bits=[];
+  const info=rotaDayInfo(); const crew=(cachedShifts()||{})[info.iso]||[];
+  if(crew.length) bits.push(`<b>🎬 On tonight:</b> ${crew.map(c=>escHtml(c.name)).join(', ')}`);
+  const nb=noticeBit(); if(nb) bits.push(nb);
+  const eb=nextEventBit(); if(eb) bits.push(eb);
+  const seq=[]; const jk=[...tickerJokes]; let bi=0;
+  while(jk.length || bi<bits.length){
+    if(jk.length) seq.push('😄 '+escHtml(jk.shift()));
+    if(bi<bits.length) seq.push(bits[bi++]);
+  }
+  if(!seq.length){ bar.style.display='none'; return; }
+  track.innerHTML=seq.join('<span class="sep">•</span>')+'<span class="sep">•</span>';
+  bar.style.display='';
+  requestAnimationFrame(()=>{ const w=track.scrollWidth||1200; track.style.animationDuration=Math.max(25,Math.round(w/60))+'s'; });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>The Banshee Sound Tech — End Of Night</title>
+<meta name="theme-color" content="#0d0d0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="End Of Night">
+<link rel="apple-touch-icon" href="../logo.jpg">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0d0d0f; --surface:#17171a; --surface2:#1f1f24; --border:#2a2a30;
+    --accent:#e8b84b; --accent-dim:rgba(232,184,75,0.12);
+    --green:#3ecf6e; --green-dim:rgba(62,207,110,0.12);
+    --red:#e85d5d; --red-dim:rgba(232,93,93,0.1);
+    --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
+    --text:#e8e8ec; --muted:#6b6b78; --done-bg:rgba(62,207,110,0.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;min-height:100vh;}
+
+  /* PIN */
+  #pin-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:24px;}
+  #pin-screen.hidden{display:none;}
+  .pin-logo{font-family:'Bebas Neue',sans-serif;font-size:38px;letter-spacing:3px;color:var(--accent);}
+  .pin-sub{font-size:12px;color:var(--muted);margin-top:-18px;letter-spacing:2px;text-transform:uppercase;}
+  .pin-dots{display:flex;gap:16px;}
+  .pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:background .15s,border-color .15s;}
+  .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+  .pin-dot.error{background:var(--red);border-color:var(--red);}
+  .pin-dot.super{background:var(--purple);border-color:var(--purple);}
+  .pin-error{font-size:13px;color:var(--red);height:18px;text-align:center;}
+  .pin-status{font-size:12px;color:var(--muted);height:18px;text-align:center;}
+  .pin-keypad{display:grid;grid-template-columns:repeat(3,72px);gap:12px;}
+  .pin-key{height:72px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-size:22px;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none;}
+  .pin-key:active{background:var(--surface2);transform:scale(.94);}
+  .pin-key.zero{grid-column:2;}
+  .pin-key.del{font-size:16px;color:var(--muted);}
+
+  /* APP */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--accent);}
+  .topbar-right{display:flex;align-items:center;gap:8px;}
+  .topbar-centre-logo{position:absolute;left:50%;transform:translateX(-50%);height:34px;width:auto;pointer-events:none;}
+  .topbar-role{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .topbar-role.staff{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);}
+  .topbar-role.manager{background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);}
+  .gs-status{font-size:11px;color:var(--muted);background:var(--surface2);padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid var(--border);}
+  .gs-status.connected{color:var(--green);border-color:var(--green);}
+  .gs-status.error{color:var(--red);border-color:var(--red);}
+
+  .nav-bar{display:flex;gap:8px;background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;flex-wrap:wrap;}
+  .nav-btn{padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--muted);text-decoration:none;display:inline-block;transition:color .2s,border-color .2s;-webkit-tap-highlight-color:transparent;}
+  .nav-btn:hover{color:var(--text);border-color:var(--accent);}
+  .nav-btn.current{background:var(--accent-dim);color:var(--accent);border-color:var(--accent);}
+
+  .tabbar{display:flex;overflow-x:auto;scrollbar-width:none;background:var(--surface);border-bottom:1px solid var(--border);padding:0 12px;gap:2px;}
+  .tabbar::-webkit-scrollbar{display:none;}
+  .tab{flex-shrink:0;padding:10px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;white-space:nowrap;}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab:hover:not(.active){color:var(--text);}
+  .page{display:none;padding:20px;max-width:900px;margin:0 auto;}
+  .page.active{display:block;}
+
+  .staff-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1.5px;}
+  .onshift-count{font-size:12px;color:var(--muted);background:var(--surface2);padding:5px 12px;border-radius:20px;}
+  .staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+  .staff-card{background:var(--surface2);border:2px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s,transform .1s;user-select:none;-webkit-tap-highlight-color:transparent;}
+  .staff-card:active{transform:scale(.96);}
+  .staff-card.on{background:var(--green-dim);border-color:var(--green);}
+  .staff-card .staff-name{font-weight:600;font-size:14px;}
+  .staff-card .staff-status{font-size:11px;margin-top:4px;color:var(--muted);}
+  .staff-card.on .staff-status{color:var(--green);}
+  .staff-actions{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;}
+
+  .btn{padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s,transform .1s;}
+  .btn:active{transform:scale(.97);}
+  .btn-accent{background:var(--accent);color:#000;}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+  .btn-danger{background:var(--red-dim);color:var(--red);border:1px solid var(--red);}
+  .btn-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
+
+  .jobs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .jobs-meta{display:flex;gap:8px;align-items:center;}
+  .pill{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--surface2);color:var(--muted);}
+  .pill.done{background:var(--green-dim);color:var(--green);}
+  .pill.todo{background:var(--accent-dim);color:var(--accent);}
+  .job-list{display:flex;flex-direction:column;gap:8px;}
+  .job-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+  .job-card.done-card{background:var(--done-bg);border-color:rgba(62,207,110,0.2);opacity:.7;}
+  .job-done-toggle{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .job-done-toggle.done{background:var(--green);border-color:var(--green);}
+  .job-done-toggle svg{display:none;}
+  .job-done-toggle.done svg{display:block;}
+  .job-info{flex:1;min-width:0;}
+  .job-name{font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .job-card.done-card .job-name{text-decoration:line-through;color:var(--muted);}
+  .job-assignee{font-size:12px;color:var(--muted);margin-top:3px;}
+  .job-assignee.assigned{color:var(--accent);}
+  .job-controls{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+  .assign-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 8px;cursor:pointer;max-width:120px;}
+  .assign-select:focus{outline:none;border-color:var(--accent);}
+  .move-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;}
+  .move-btn:hover{color:var(--text);border-color:var(--text);}
+  .add-job-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .add-job-input{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 14px;}
+  .add-job-input:focus{outline:none;border-color:var(--accent);}
+  .add-job-input::placeholder{color:var(--muted);}
+
+  /* Notes */
+  .notes-section{margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .notes-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);margin-bottom:10px;}
+  .notes-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 14px;line-height:1.6;resize:vertical;min-height:80px;}
+  .notes-textarea:focus{outline:none;border-color:var(--accent);}
+  .notes-textarea::placeholder{color:var(--muted);}
+  .notes-save-row{display:flex;gap:8px;margin-top:8px;align-items:center;}
+  .notes-saved{font-size:12px;color:var(--green);display:none;}
+  /* Handover notes list */
+  .ho-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+  .ho-item{display:flex;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+  .ho-body{min-width:0;flex:1;}
+  .ho-meta{font-size:11px;color:var(--muted);margin-bottom:3px;}
+  .ho-text{font-size:14px;color:var(--text);line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+  .ho-controls{display:flex;gap:4px;align-items:flex-start;flex-shrink:0;}
+  .ho-add{border-top:1px solid var(--border);padding-top:12px;}
+  .ho-add .assign-select{width:100%;margin-bottom:8px;}
+  .notes-section .muted-text{color:var(--muted);font-style:italic;}
+
+  /* Staff mgmt */
+  .staff-mgmt{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);}
+  .staff-mgmt-title{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+  .staff-mgmt-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .staff-mgmt-input{flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 14px;}
+  .staff-mgmt-input:focus{outline:none;border-color:var(--accent);}
+  .staff-remove-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .staff-remove-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;}
+  .staff-remove-btn{background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:4px 10px;cursor:pointer;}
+
+  /* Summary */
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px;}
+  .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .summary-day{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent);margin-bottom:8px;}
+  .summary-bar-track{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+  .summary-bar-fill{height:100%;background:var(--green);border-radius:3px;transition:width .5s;}
+  .summary-stats{font-size:12px;color:var(--muted);}
+  .summary-stats span{color:var(--green);font-weight:600;}
+  .staff-summary{margin-top:28px;}
+  .staff-summary-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:14px;}
+  .staff-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .staff-row:last-child{border-bottom:none;}
+  .staff-row-name{flex:1;font-weight:500;}
+  .staff-row-count{font-size:13px;color:var(--muted);}
+  .staff-row-count span{color:var(--accent);font-weight:600;}
+
+  /* Settings */
+  .settings-section{margin-bottom:28px;}
+  .settings-label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;}
+  .input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .text-input{flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 14px;}
+  .text-input:focus{outline:none;border-color:var(--accent);}
+  .sheet-id-note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;}
+  .sheet-id-note code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px;color:var(--accent);}
+  .settings-sensitive{margin-top:60px;padding-top:20px;border-top:1px dashed var(--border);}
+  .settings-sensitive-note{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:16px;}
+
+  /* Sync & modals */
+  .sync-banner{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--muted);display:none;gap:8px;align-items:center;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+  .sync-banner.show{display:flex;}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite;}
+  .sync-dot.ok{background:var(--green);animation:none;}
+  .sync-dot.err{background:var(--red);animation:none;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes glow-pulse{0%,100%{box-shadow:0 0 6px 1px rgba(232,93,93,0.4);border-color:var(--red);}50%{box-shadow:0 0 18px 4px rgba(232,93,93,0.75);border-color:rgba(232,93,93,0.9);}}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:300;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:100%;max-width:420px;}
+  .modal h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:12px;}
+  .modal p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px;}
+  .modal-buttons{display:flex;gap:10px;justify-content:flex-end;}
+  @media(max-width:500px){.job-card{flex-wrap:wrap}.assign-select{max-width:100%}}
+</style>
+<script src="../bl-config.js"></script>
+<script src="../bl-auth.js"></script>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen" style="display:none">
+  <div class="pin-logo">🌙 End Of Night</div>
+  <div class="pin-sub">Staff Access</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-status" id="pin-status">Loading…</div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-keypad" id="pin-keypad" style="opacity:.4;pointer-events:none">
+    <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key zero" onclick="pinKey('0')">0</button><button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="topbar" style="position:relative;">
+    <div class="topbar-logo">🌙 End Of Night</div>
+    <img class="topbar-centre-logo" src="../logo.jpg" alt="The Banshee Sound Tech">
+    <div class="topbar-right">
+      <div class="topbar-role" id="topbar-role"></div>
+      <div class="gs-status" id="gsStatus">⚙ Not connected</div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <a class="nav-btn" id="nav-home" href="../home">🏠 Home</a>
+    <a class="nav-btn" href="../weekly-cleaning">📋 Weekly Jobs</a>
+    <span class="nav-btn current">🌙 End Of Night</span>
+    <a class="nav-btn" href="../rotas">📅 Rotas</a>
+    <a class="nav-btn" id="nav-dash" href="../dashboard" style="display:none;background:var(--purple-dim);color:var(--purple);border-color:var(--purple)">📊 Dashboard</a>
+    <button class="nav-btn" id="nav-logout" onclick="logOut()" style="display:none;cursor:pointer;color:var(--red);border-color:var(--red)">🔒 Log Out</button>
+  </div>
+  <div class="tabbar">
+    <div class="tab active" onclick="switchTab('staff')">Staff</div>
+    <div class="tab" id="tab-monday" onclick="switchTab('monday')">Mon</div>
+    <div class="tab" id="tab-tuesday" onclick="switchTab('tuesday')">Tue</div>
+    <div class="tab" id="tab-wednesday" onclick="switchTab('wednesday')">Wed</div>
+    <div class="tab" id="tab-thursday" onclick="switchTab('thursday')">Thu</div>
+    <div class="tab" id="tab-friday" onclick="switchTab('friday')">Fri</div>
+    <div class="tab" id="tab-saturday" onclick="switchTab('saturday')">Sat</div>
+    <div class="tab" id="tab-sunday" onclick="switchTab('sunday')">Sun</div>
+    <div class="tab" onclick="switchTab('summary')">Summary</div>
+    <div class="tab" id="tab-settings" onclick="goSettings()">Settings</div>
+  </div>
+
+  <div class="page active" id="page-staff">
+    <div class="staff-header">
+      <div class="section-title">Staff On Shift</div>
+      <div class="onshift-count" id="onshift-count">0 on shift</div>
+    </div>
+    <div class="staff-grid" id="staff-grid"></div>
+    <div class="staff-actions">
+      <button class="btn btn-accent" onclick="applyRotaCrew(true)">🎬 Tonight's crew</button>
+      <button class="btn btn-ghost" onclick="clearAllShifts()">Clear All</button>
+      <button class="btn btn-accent" onclick="saveStaffToSheet()">Save to Sheet</button>
+    </div>
+    <div class="staff-mgmt" id="staff-mgmt" style="display:none">
+      <div class="staff-mgmt-title">Manage Staff List</div>
+      <div class="staff-mgmt-row">
+        <input class="staff-mgmt-input" id="new-staff-input" placeholder="New staff member name…"/>
+        <button class="btn btn-green" onclick="addStaffMember()">+ Add</button>
+      </div>
+      <div class="staff-remove-list" id="staff-remove-list"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-monday"></div>
+  <div class="page" id="page-tuesday"></div>
+  <div class="page" id="page-wednesday"></div>
+  <div class="page" id="page-thursday"></div>
+  <div class="page" id="page-friday"></div>
+  <div class="page" id="page-saturday"></div>
+  <div class="page" id="page-sunday"></div>
+
+  <div class="page" id="page-summary">
+    <div class="section-title" style="margin-bottom:18px">Week Summary</div>
+    <div class="summary-grid" id="summary-grid"></div>
+    <div class="staff-summary">
+      <div class="staff-summary-title">Jobs Per Staff Member</div>
+      <div id="staff-job-summary"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-settings">
+    <div class="section-title" style="margin-bottom:20px">Settings</div>
+    <div class="settings-section">
+      <div class="settings-label">Weekly Email Report</div>
+      <div class="sheet-id-note" style="margin-bottom:10px">One email address per line.</div>
+      <textarea class="text-input" id="email-input" rows="4" placeholder="manager@bar.com" style="resize:vertical;min-height:100px;font-family:'DM Sans',sans-serif;line-height:1.6"></textarea>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="saveEmail()">Save Emails</button>
+        <button class="btn btn-accent" onclick="sendEmailReport()">📧 Send Report Now</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Data</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="exportJSON()">Export backup</button>
+        <button class="btn btn-danger" onclick="confirmWeeklyReset()">Weekly Reset</button>
+      </div>
+    </div>
+    <div class="settings-sensitive">
+      <div class="settings-sensitive-note">⚙ Technical settings — do not change unless instructed</div>
+      <div class="settings-section">
+        <div class="settings-label">Google Sheet ID</div>
+        <div class="input-row">
+          <input class="text-input" id="sheet-id-input" placeholder="Paste Sheet ID here"/>
+          <button class="btn btn-accent" onclick="saveSheetId()">Connect</button>
+        </div>
+        <div class="sheet-id-note">The long string between <code>/d/</code> and <code>/edit</code> in your sheet URL.</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">Apps Script URL</div>
+        <div class="input-row">
+          <input class="text-input" id="script-url-input" placeholder="https://script.google.com/macros/s/…/exec"/>
+          <button class="btn btn-ghost" onclick="saveScriptUrl()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="sync-banner" id="syncBanner">
+  <div class="sync-dot" id="syncDot"></div>
+  <span id="syncMsg">Saving...</span>
+</div>
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-body"></p>
+    <div class="modal-buttons">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="modal-confirm-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- CELEBRATION OVERLAY -->
+<div id="celebration" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.88);flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+  <canvas id="fireworks-canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></canvas>
+  <div style="position:relative;z-index:2;text-align:center;padding:0 24px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:3px;color:#fff;line-height:1;margin-bottom:10px;">Great Work Tonight!</div>
+    <div id="cel-mvp" style="font-size:20px;color:var(--accent);font-weight:600;margin-bottom:6px;"></div>
+    <div style="font-size:14px;color:#aaa;margin-bottom:28px;">All jobs done &amp; night signed off 🎉</div>
+    <button onclick="dismissCelebration()" style="padding:12px 32px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;">👏 Dismiss</button>
+    <div id="cel-countdown" style="font-size:12px;color:#666;margin-top:10px;"></div>
+  </div>
+</div>
+
+<script>
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const DAY_KEYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+const PIN_SHEET_ID=BL_CFG.weeklyJobs;
+const HANDOVER_KEY='bl_handover_notes';
+// Shared notes sheet (handover sync). Same /exec URL the Home page uses.
+const NOTES_SCRIPT_URL=BL_CFG.notesScript;
+const DEFAULT_STAFF=['Alix','Blue','Connor','Craig','David','Edd','Esje','Eva','Hannah','Jennifer','Maja','Richard','Rory','Ryan','Simon','Theresa'];
+const DEFAULT_JOBS=[
+  {id:1,day:'Monday',job:'Lost property all logged',homeDay:'Monday'},
+  {id:2,day:'Monday',job:'Check Toilets, soap, and paper',homeDay:'Monday'},
+  {id:3,day:'Monday',job:'Bar surfaces wiped down',homeDay:'Monday'},
+  {id:4,day:'Monday',job:'Fruit in fridge',homeDay:'Monday'},
+  {id:5,day:'Monday',job:'Run drip trays & bar runners thru washer',homeDay:'Monday'},
+  {id:6,day:'Monday',job:'Wash bottle cap bins',homeDay:'Monday'},
+  {id:7,day:'Monday',job:'Spray/polish all tables & surfaces',homeDay:'Monday'},
+  {id:8,day:'Monday',job:'Wash bin lid',homeDay:'Monday'},
+  {id:9,day:'Monday',job:'Clean Ice buckets with blue roll',homeDay:'Monday'},
+  {id:10,day:'Monday',job:'Restock nibbles',homeDay:'Monday'},
+  {id:11,day:'Monday',job:'Stock fridges, forward facing',homeDay:'Monday'},
+  {id:12,day:'Monday',job:'Soda gun cord wiped / gun in soda',homeDay:'Monday'},
+  {id:13,day:'Monday',job:'Spray and wipe down bar fonts',homeDay:'Monday'},
+  {id:14,day:'Monday',job:'Nozzles in soda / Clean top of taps',homeDay:'Monday'},
+  {id:15,day:'Monday',job:'Wash all drip trays',homeDay:'Monday'},
+  {id:16,day:'Monday',job:'Check toilets for rubbish / glasses',homeDay:'Monday'},
+  {id:17,day:'Monday',job:'Clean fridge doors inside and out',homeDay:'Monday'},
+  {id:18,day:'Monday',job:'Clean till / spray blue roll NOT till',homeDay:'Monday'},
+  {id:19,day:'Monday',job:'Dismantle & Clean glass washer',homeDay:'Monday'},
+  {id:20,day:'Monday',job:'Empty bins to cellar',homeDay:'Monday'},
+  {id:21,day:'Monday',job:'Sweep and clean behind bar',homeDay:'Monday'},
+  {id:22,day:'Monday',job:'Deck scrub and mop behind bar',homeDay:'Monday'},
+  {id:23,day:'Monday',job:'Leave a note for anything day staff should know',homeDay:'Monday'},
+  {id:24,day:'Tuesday',job:'Lost property all logged',homeDay:'Tuesday'},
+  {id:25,day:'Tuesday',job:'Check Toilets, soap, and paper',homeDay:'Tuesday'},
+  {id:26,day:'Tuesday',job:'Bar surfaces wiped down',homeDay:'Tuesday'},
+  {id:27,day:'Tuesday',job:'Fruit in fridge',homeDay:'Tuesday'},
+  {id:28,day:'Tuesday',job:'Run drip trays & bar runners thru washer',homeDay:'Tuesday'},
+  {id:29,day:'Tuesday',job:'Wash bottle cap bins',homeDay:'Tuesday'},
+  {id:30,day:'Tuesday',job:'Spray/polish all tables & surfaces',homeDay:'Tuesday'},
+  {id:31,day:'Tuesday',job:'Wash bin lid',homeDay:'Tuesday'},
+  {id:32,day:'Tuesday',job:'Clean Ice buckets with blue roll',homeDay:'Tuesday'},
+  {id:33,day:'Tuesday',job:'Restock nibbles',homeDay:'Tuesday'},
+  {id:34,day:'Tuesday',job:'Stock fridges, forward facing',homeDay:'Tuesday'},
+  {id:35,day:'Tuesday',job:'Soda gun cord wiped / gun in soda',homeDay:'Tuesday'},
+  {id:36,day:'Tuesday',job:'Spray and wipe down bar fonts',homeDay:'Tuesday'},
+  {id:37,day:'Tuesday',job:'Nozzles in soda / Clean top of taps',homeDay:'Tuesday'},
+  {id:38,day:'Tuesday',job:'Wash all drip trays',homeDay:'Tuesday'},
+  {id:39,day:'Tuesday',job:'Check toilets for rubbish / glasses',homeDay:'Tuesday'},
+  {id:40,day:'Tuesday',job:'Clean fridge doors inside and out',homeDay:'Tuesday'},
+  {id:41,day:'Tuesday',job:'Clean till / spray blue roll NOT till',homeDay:'Tuesday'},
+  {id:42,day:'Tuesday',job:'Dismantle & Clean glass washer',homeDay:'Tuesday'},
+  {id:43,day:'Tuesday',job:'Empty bins to cellar / put bin out',homeDay:'Tuesday'},
+  {id:44,day:'Tuesday',job:'Sweep and clean behind bar',homeDay:'Tuesday'},
+  {id:45,day:'Tuesday',job:'Deck scrub and mop behind bar',homeDay:'Tuesday'},
+  {id:46,day:'Tuesday',job:'Leave a note for anything day staff should know',homeDay:'Tuesday'},
+  {id:47,day:'Wednesday',job:'Lost property all logged',homeDay:'Wednesday'},
+  {id:48,day:'Wednesday',job:'Check Toilets, soap, and paper',homeDay:'Wednesday'},
+  {id:49,day:'Wednesday',job:'Bar surfaces wiped down',homeDay:'Wednesday'},
+  {id:50,day:'Wednesday',job:'Fruit in fridge',homeDay:'Wednesday'},
+  {id:51,day:'Wednesday',job:'Run drip trays & bar runners thru washer',homeDay:'Wednesday'},
+  {id:52,day:'Wednesday',job:'Wash bottle cap bins',homeDay:'Wednesday'},
+  {id:53,day:'Wednesday',job:'Spray/polish all tables & surfaces',homeDay:'Wednesday'},
+  {id:54,day:'Wednesday',job:'Wash bin lid',homeDay:'Wednesday'},
+  {id:55,day:'Wednesday',job:'Clean Ice buckets with blue roll',homeDay:'Wednesday'},
+  {id:56,day:'Wednesday',job:'Restock nibbles',homeDay:'Wednesday'},
+  {id:57,day:'Wednesday',job:'Stock fridges, forward facing',homeDay:'Wednesday'},
+  {id:58,day:'Wednesday',job:'Soda gun cord wiped / gun in soda',homeDay:'Wednesday'},
+  {id:59,day:'Wednesday',job:'Spray and wipe down bar fonts',homeDay:'Wednesday'},
+  {id:60,day:'Wednesday',job:'Nozzles in soda / Clean top of taps',homeDay:'Wednesday'},
+  {id:61,day:'Wednesday',job:'Wash all drip trays',homeDay:'Wednesday'},
+  {id:62,day:'Wednesday',job:'Check toilets for rubbish / glasses',homeDay:'Wednesday'},
+  {id:63,day:'Wednesday',job:'Clean fridge doors inside and out',homeDay:'Wednesday'},
+  {id:64,day:'Wednesday',job:'Clean till / spray blue roll NOT till',homeDay:'Wednesday'},
+  {id:65,day:'Wednesday',job:'Dismantle & Clean glass washer',homeDay:'Wednesday'},
+  {id:66,day:'Wednesday',job:'Empty bins to cellar',homeDay:'Wednesday'},
+  {id:67,day:'Wednesday',job:'Sweep and clean behind bar',homeDay:'Wednesday'},
+  {id:68,day:'Wednesday',job:'Deck scrub and mop behind bar',homeDay:'Wednesday'},
+  {id:69,day:'Wednesday',job:'Leave a note for anything day staff should know',homeDay:'Wednesday'},
+  {id:70,day:'Thursday',job:'Lost property all logged',homeDay:'Thursday'},
+  {id:71,day:'Thursday',job:'Check Toilets, soap, and paper',homeDay:'Thursday'},
+  {id:72,day:'Thursday',job:'Bar surfaces wiped down',homeDay:'Thursday'},
+  {id:73,day:'Thursday',job:'Fruit in fridge',homeDay:'Thursday'},
+  {id:74,day:'Thursday',job:'Run drip trays & bar runners thru washer',homeDay:'Thursday'},
+  {id:75,day:'Thursday',job:'Wash bottle cap bins',homeDay:'Thursday'},
+  {id:76,day:'Thursday',job:'Spray/polish all tables & surfaces',homeDay:'Thursday'},
+  {id:77,day:'Thursday',job:'Wash bin lid',homeDay:'Thursday'},
+  {id:78,day:'Thursday',job:'Clean Ice buckets with blue roll',homeDay:'Thursday'},
+  {id:79,day:'Thursday',job:'Restock nibbles',homeDay:'Thursday'},
+  {id:80,day:'Thursday',job:'Stock fridges, forward facing',homeDay:'Thursday'},
+  {id:81,day:'Thursday',job:'Soda gun cord wiped / gun in soda',homeDay:'Thursday'},
+  {id:82,day:'Thursday',job:'Spray and wipe down bar fonts',homeDay:'Thursday'},
+  {id:83,day:'Thursday',job:'Nozzles in soda / Clean top of taps',homeDay:'Thursday'},
+  {id:84,day:'Thursday',job:'Wash all drip trays',homeDay:'Thursday'},
+  {id:85,day:'Thursday',job:'Check toilets for rubbish / glasses',homeDay:'Thursday'},
+  {id:86,day:'Thursday',job:'Clean fridge doors inside and out',homeDay:'Thursday'},
+  {id:87,day:'Thursday',job:'Clean till / spray blue roll NOT till',homeDay:'Thursday'},
+  {id:88,day:'Thursday',job:'Dismantle & Clean glass washer',homeDay:'Thursday'},
+  {id:89,day:'Thursday',job:'Empty bins to cellar',homeDay:'Thursday'},
+  {id:90,day:'Thursday',job:'Sweep and clean behind bar',homeDay:'Thursday'},
+  {id:91,day:'Thursday',job:'Deck scrub and mop behind bar',homeDay:'Thursday'},
+  {id:92,day:'Thursday',job:'Leave a note for anything day staff should know',homeDay:'Thursday'},
+  {id:93,day:'Friday',job:'Lost property all logged',homeDay:'Friday'},
+  {id:94,day:'Friday',job:'Check Toilets, soap, and paper',homeDay:'Friday'},
+  {id:95,day:'Friday',job:'Bar surfaces wiped down',homeDay:'Friday'},
+  {id:96,day:'Friday',job:'Fruit in fridge',homeDay:'Friday'},
+  {id:97,day:'Friday',job:'Run drip trays & bar runners thru washer',homeDay:'Friday'},
+  {id:98,day:'Friday',job:'Wash bottle cap bins',homeDay:'Friday'},
+  {id:99,day:'Friday',job:'Spray/polish all tables & surfaces',homeDay:'Friday'},
+  {id:100,day:'Friday',job:'Wash bin lid',homeDay:'Friday'},
+  {id:101,day:'Friday',job:'Clean Ice buckets with blue roll',homeDay:'Friday'},
+  {id:102,day:'Friday',job:'Restock nibbles',homeDay:'Friday'},
+  {id:103,day:'Friday',job:'Stock fridges, forward facing',homeDay:'Friday'},
+  {id:104,day:'Friday',job:'Soda gun cord wiped / gun in soda',homeDay:'Friday'},
+  {id:105,day:'Friday',job:'Spray and wipe down bar fonts',homeDay:'Friday'},
+  {id:106,day:'Friday',job:'Nozzles in soda / Clean top of taps',homeDay:'Friday'},
+  {id:107,day:'Friday',job:'Wash all drip trays',homeDay:'Friday'},
+  {id:108,day:'Friday',job:'Check toilets for rubbish / glasses',homeDay:'Friday'},
+  {id:109,day:'Friday',job:'Clean fridge doors inside and out',homeDay:'Friday'},
+  {id:110,day:'Friday',job:'Clean till / spray blue roll NOT till',homeDay:'Friday'},
+  {id:111,day:'Friday',job:'Dismantle & Clean glass washer',homeDay:'Friday'},
+  {id:112,day:'Friday',job:'Empty bins to cellar / put bins out',homeDay:'Friday'},
+  {id:113,day:'Friday',job:'Sweep and clean behind bar',homeDay:'Friday'},
+  {id:114,day:'Friday',job:'Deck scrub and mop behind bar',homeDay:'Friday'},
+  {id:115,day:'Friday',job:'Leave a note for anything day staff should know',homeDay:'Friday'},
+  {id:116,day:'Saturday',job:'Lost property all logged',homeDay:'Saturday'},
+  {id:117,day:'Saturday',job:'Check Toilets, soap, and paper',homeDay:'Saturday'},
+  {id:118,day:'Saturday',job:'Bar surfaces wiped down',homeDay:'Saturday'},
+  {id:119,day:'Saturday',job:'Fruit in fridge',homeDay:'Saturday'},
+  {id:120,day:'Saturday',job:'Run drip trays & bar runners thru washer',homeDay:'Saturday'},
+  {id:121,day:'Saturday',job:'Wash bottle cap bins',homeDay:'Saturday'},
+  {id:122,day:'Saturday',job:'Spray/polish all tables & surfaces',homeDay:'Saturday'},
+  {id:123,day:'Saturday',job:'Wash bin lid',homeDay:'Saturday'},
+  {id:124,day:'Saturday',job:'Clean Ice buckets with blue roll',homeDay:'Saturday'},
+  {id:125,day:'Saturday',job:'Restock nibbles',homeDay:'Saturday'},
+  {id:126,day:'Saturday',job:'Stock fridges, forward facing',homeDay:'Saturday'},
+  {id:127,day:'Saturday',job:'Soda gun cord wiped / gun in soda',homeDay:'Saturday'},
+  {id:128,day:'Saturday',job:'Spray and wipe down bar fonts',homeDay:'Saturday'},
+  {id:129,day:'Saturday',job:'Nozzles in soda / Clean top of taps',homeDay:'Saturday'},
+  {id:130,day:'Saturday',job:'Wash all drip trays',homeDay:'Saturday'},
+  {id:131,day:'Saturday',job:'Check toilets for rubbish / glasses',homeDay:'Saturday'},
+  {id:132,day:'Saturday',job:'Clean fridge doors inside and out',homeDay:'Saturday'},
+  {id:133,day:'Saturday',job:'Clean till / spray blue roll NOT till',homeDay:'Saturday'},
+  {id:134,day:'Saturday',job:'Dismantle & Clean glass washer',homeDay:'Saturday'},
+  {id:135,day:'Saturday',job:'Empty bins to cellar',homeDay:'Saturday'},
+  {id:136,day:'Saturday',job:'Sweep and clean behind bar',homeDay:'Saturday'},
+  {id:137,day:'Saturday',job:'Deck scrub and mop behind bar',homeDay:'Saturday'},
+  {id:138,day:'Saturday',job:'Leave a note for anything day staff should know',homeDay:'Saturday'},
+  {id:139,day:'Sunday',job:'Lost property all logged',homeDay:'Sunday'},
+  {id:140,day:'Sunday',job:'Check Toilets, soap, and paper',homeDay:'Sunday'},
+  {id:141,day:'Sunday',job:'Bar surfaces wiped down',homeDay:'Sunday'},
+  {id:142,day:'Sunday',job:'Fruit in fridge',homeDay:'Sunday'},
+  {id:143,day:'Sunday',job:'Run drip trays & bar runners thru washer',homeDay:'Sunday'},
+  {id:144,day:'Sunday',job:'Wash bottle cap bins',homeDay:'Sunday'},
+  {id:145,day:'Sunday',job:'Spray/polish all tables & surfaces',homeDay:'Sunday'},
+  {id:146,day:'Sunday',job:'Wash bin lid',homeDay:'Sunday'},
+  {id:147,day:'Sunday',job:'Clean Ice buckets with blue roll',homeDay:'Sunday'},
+  {id:148,day:'Sunday',job:'Restock nibbles',homeDay:'Sunday'},
+  {id:149,day:'Sunday',job:'Stock fridges, forward facing',homeDay:'Sunday'},
+  {id:150,day:'Sunday',job:'Soda gun cord wiped / gun in soda',homeDay:'Sunday'},
+  {id:151,day:'Sunday',job:'Spray and wipe down bar fonts',homeDay:'Sunday'},
+  {id:152,day:'Sunday',job:'Nozzles in soda / Clean top of taps',homeDay:'Sunday'},
+  {id:153,day:'Sunday',job:'Wash all drip trays',homeDay:'Sunday'},
+  {id:154,day:'Sunday',job:'Check toilets for rubbish / glasses',homeDay:'Sunday'},
+  {id:155,day:'Sunday',job:'Clean fridge doors inside and out',homeDay:'Sunday'},
+  {id:156,day:'Sunday',job:'Clean till / spray blue roll NOT till',homeDay:'Sunday'},
+  {id:157,day:'Sunday',job:'Dismantle & Clean glass washer',homeDay:'Sunday'},
+  {id:158,day:'Sunday',job:'Empty bins to cellar / put bins out',homeDay:'Sunday'},
+  {id:159,day:'Sunday',job:'Sweep and clean behind bar',homeDay:'Sunday'},
+  {id:160,day:'Sunday',job:'Deck scrub and mop behind bar',homeDay:'Sunday'},
+  {id:161,day:'Sunday',job:'Leave a note for anything day staff should know',homeDay:'Sunday'},
+  {id:162,day:'Sunday',job:'Renovate all glassware',homeDay:'Sunday'},
+  {id:163,day:'Sunday',job:'Clean all glass shelves behind the bar',homeDay:'Sunday'},
+  {id:164,day:'Sunday',job:'Date rotate all stock',homeDay:'Sunday'},
+  {id:165,day:'Sunday',job:'Clean bottom shelves of bottle cooler & fridge seals',homeDay:'Sunday'},
+  {id:166,day:'Sunday',job:'Refill water bulbs in plants if needed',homeDay:'Sunday'},
+  {id:167,day:'Sunday',job:'Sweep/scrub/mop stairs to cellar',homeDay:'Sunday'},
+  {id:168,day:'Sunday',job:'Sweep/scrub/mop office',homeDay:'Sunday'},
+  {id:169,day:'Sunday',job:'Cleaners cupboard - sort and clean',homeDay:'Sunday'},
+  {id:170,day:'Sunday',job:'Check First Aid boxes',homeDay:'Sunday'},
+  {id:171,day:'Sunday',job:'Clean underside of tabletops',homeDay:'Sunday'},
+  {id:172,day:'Sunday',job:'Wash down table bases using hot soapy water',homeDay:'Sunday'},
+  {id:173,day:'Sunday',job:'Wash down chair legs',homeDay:'Sunday'},
+  {id:174,day:'Sunday',job:'Wash front of bar including stool legs',homeDay:'Sunday'},
+  {id:175,day:'Sunday',job:'Clean radiators and remove any rubbish behind/under rads',homeDay:'Sunday'},
+  {id:176,day:'Sunday',job:'Wipe down back bar facings and unclutter around till',homeDay:'Sunday'},
+  {id:177,day:'Sunday',job:'Clean toilet mirrors, soap and toilet roll dispensers',homeDay:'Sunday'},
+  {id:178,day:'Sunday',job:'Line clean all lines (cask cleaned between keg change)',homeDay:'Sunday'},
+  {id:179,day:'Sunday',job:'Soak/clean optics & pourers',homeDay:'Sunday'},
+  {id:180,day:'Sunday',job:'Descale coffee machine',homeDay:'Sunday'},
+  {id:181,day:'Sunday',job:'Clean coffee machine filters',homeDay:'Sunday'},
+  {id:182,day:'Sunday',job:'Clean area under coffee machine and grinder',homeDay:'Sunday'},
+  {id:183,day:'Sunday',job:'Scrub inside of cups - remove tea/coffee stains',homeDay:'Sunday'},
+  {id:184,day:'Sunday',job:'Bomb cup and shot glass areas cleaned',homeDay:'Sunday'},
+  {id:185,day:'Sunday',job:'Clean Bins inside and out',homeDay:'Sunday'}
+];
+
+// ── STATE ──
+let state, sheetId='', emailAddr='', scriptUrl='', syncTimer, currentTab='staff';
+let livePin=null, liveSuper=null, pinEntry='', isManager=false;
+
+// ── CSV HELPERS ──
+function parseCSV(line){const cols=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur.trim());cur='';}else{cur+=c;}}cols.push(cur.trim());return cols;}
+function clean(s){return(s||'').replace(/^"|"$/g,'').trim();}
+function normDay(s){
+  const v=clean(s).toLowerCase();
+  const map={mon:'Monday',monday:'Monday',tue:'Tuesday',tues:'Tuesday',tuesday:'Tuesday',wed:'Wednesday',weds:'Wednesday',wednesday:'Wednesday',thu:'Thursday',thur:'Thursday',thurs:'Thursday',thursday:'Thursday',fri:'Friday',friday:'Friday',sat:'Saturday',saturday:'Saturday',sun:'Sunday',sunday:'Sunday'};
+  return map[v]||clean(s);
+}
+
+// ── LOAD PINS — skips header rows, takes first two numeric values ──
+async function loadPins(){
+  try{
+    const url=`https://docs.google.com/spreadsheets/d/${PIN_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Settings`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error();
+    const found=[];
+    for(const line of (await res.text()).split('\n').filter(l=>l.trim())){
+      const cols=parseCSV(line);
+      const val=(clean(cols[1])||clean(cols[0])).trim();
+      if(/^\d+$/.test(val)) found.push(val);
+      if(found.length===2) break;
+    }
+    livePin=found[0]||'1234';
+    liveSuper=found[1]||'1111';
+    // B3 = Apps Script URL for EON's own sheet — auto-save
+    const eonSheetId=localStorage.getItem('bl_eon_sheet_id')||'';
+    if(eonSheetId){
+      try{
+        const eonUrl=`https://docs.google.com/spreadsheets/d/${eonSheetId}/gviz/tq?tqx=out:csv&sheet=Settings`;
+        const eonRes=await fetch(eonUrl);
+        if(eonRes.ok){
+          const eonLines=(await eonRes.text()).split('\n').filter(l=>l.trim());
+          for(const line of eonLines){
+            const cols=parseCSV(line);
+            const val=(clean(cols[1])||clean(cols[0])).trim();
+            if(val.startsWith('https://script.google.com')){
+              localStorage.setItem('bl_eon_script_url',val);
+              break;
+            }
+          }
+        }
+      }catch(e2){}
+    }
+  }catch(e){livePin='1234';liveSuper='1111';}
+}
+
+// ── BOOT — same pattern as Weekly Jobs ──
+(function boot(){
+  // Each app is hard-pinned to its OWN sheet. The ?sheet= URL param is
+  // ignored on purpose — it used to let the wrong ID leak in between apps.
+  const MY_SHEET=BL_CFG.endOfNight;
+  const OTHER_SHEET=BL_CFG.weeklyJobs;
+  let stored=localStorage.getItem('bl_eon_sheet_id')||'';
+  if(!stored || stored===OTHER_SHEET) stored=MY_SHEET;  // auto-heal cross-contamination
+  localStorage.setItem('bl_eon_sheet_id',stored);
+  sheetId=stored;
+  BLAuth.init({appName:'End of Night', require:'staff', onReady:function(){ showApp(); }});
+})();
+
+// ── PIN ENTRY ──
+function pinKey(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)setTimeout(checkPin,120);}
+function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots();document.getElementById('pin-error').textContent='';}
+function updateDots(){for(let i=0;i<4;i++)document.getElementById('pd'+i).className='pin-dot'+(i<pinEntry.length?' filled':'');}
+function checkPin(){
+  if(pinEntry===livePin){
+    isManager=false;sessionStorage.setItem('bl_eon_role','staff');showApp();
+  }else if(pinEntry===liveSuper){
+    isManager=true;sessionStorage.setItem('bl_eon_role','manager');
+    for(let i=0;i<4;i++)document.getElementById('pd'+i).className='pin-dot super';
+    setTimeout(showApp,300);
+  }else{
+    for(let i=0;i<4;i++)document.getElementById('pd'+i).className='pin-dot error';
+    document.getElementById('pin-error').textContent='Incorrect PIN';
+    setTimeout(()=>{pinEntry='';updateDots();document.getElementById('pin-error').textContent='';},900);
+  }
+}
+
+// ── SHOW APP ──
+function showApp(){
+  isManager=BLAuth.isManager();
+  document.getElementById('pin-screen').classList.add('hidden');
+  document.getElementById('app').style.display='block';
+  const roleEl=document.getElementById('topbar-role');
+  if(isManager){
+    roleEl.textContent='⭐ Manager';roleEl.className='topbar-role manager';
+    document.getElementById('nav-dash').style.display='inline-block';
+    document.getElementById('nav-logout').style.display='inline-block';
+  }else{
+    roleEl.textContent='Staff';roleEl.className='topbar-role staff';
+    document.getElementById('nav-dash').style.display='none';
+    document.getElementById('nav-logout').style.display='inline-block';
+  }
+  document.getElementById('tab-settings').style.display=isManager?'':'none';
+  initApp();
+}
+
+function logOut(){
+  sessionStorage.clear();
+  BLAuth.logout();
+}
+
+// ── APP INIT ──
+function initApp(){
+  state=loadState();
+  sheetId=localStorage.getItem('bl_eon_sheet_id')||BL_CFG.endOfNight;
+  emailAddr=localStorage.getItem('bl_eon_email')||'';
+  scriptUrl=localStorage.getItem('bl_eon_script_url')||BL_CFG.eonScript;
+  // Home nav link
+  const homeId=localStorage.getItem('bl_eon_sheet_id')||localStorage.getItem('bl_sheet_id')||'';
+  document.getElementById('nav-home').href=homeId
+    ?`../home?sheet=${homeId}`
+    :'../home';
+  renderStaff();
+  if(sheetId){document.getElementById('gsStatus').textContent='↻ Syncing…';loadFromSheet().then(maybeSeedShifts);}
+  else{maybeSeedShifts();}
+  // Highlight today (late-night: day stays same until 7am)
+  const now=new Date();
+  const adj=now.getHours()<7?new Date(now-864e5):now;
+  const today=adj.toLocaleDateString('en-GB',{weekday:'long'}).toLowerCase();
+  if(DAY_KEYS.includes(today)){
+    const el=document.getElementById('tab-'+today);
+    if(el){el.style.fontWeight='700';el.style.color='var(--accent)';}
+  }
+}
+
+function loadState(){
+  try{const s=localStorage.getItem('bl_eon_state');if(s){const st=JSON.parse(s);
+    // Safety net: never let the job list be empty — rebuild from defaults
+    if(!st.jobs||!st.jobs.length){st.jobs=DEFAULT_JOBS.map(j=>({...j,assignedTo:'',done:false,timestamp:'',notes:''}));}
+    if(!st.staff||!st.staff.length){st.staff=DEFAULT_STAFF.map(n=>({name:n,onShift:false}));}
+    return st;}}catch(e){}
+  return{staff:DEFAULT_STAFF.map(n=>({name:n,onShift:false})),jobs:DEFAULT_JOBS.map(j=>({...j,assignedTo:'',done:false,timestamp:'',notes:''}))};
+}
+function saveState(){localStorage.setItem('bl_eon_state',JSON.stringify(state));}
+
+// ── SETTINGS tab guard ──
+function goSettings(){ BLAuth.requireManager(function(){ isManager=true; document.getElementById('tab-settings').style.display=''; var nd=document.getElementById('nav-dash'); if(nd) nd.style.display='inline-block'; switchTab('settings'); }, 'Manager PIN for Settings'); }
+
+// ── NAV ──
+function switchTab(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabMap=['staff',...DAY_KEYS,'summary','settings'];
+  const idx=tabMap.indexOf(name);
+  if(idx>=0)document.querySelectorAll('.tab')[idx].classList.add('active');
+  currentTab=name;
+  if(name==='staff')renderStaff();
+  else if(DAY_KEYS.includes(name))renderDay(DAYS[DAY_KEYS.indexOf(name)]);
+  else if(name==='summary')renderSummary();
+  else if(name==='settings')renderSettings();
+}
+
+// ── STAFF ──
+function renderStaff(){
+  const on=state.staff.filter(s=>s.onShift).length;
+  document.getElementById('onshift-count').textContent=on+' on shift';
+  document.getElementById('staff-grid').innerHTML=state.staff.map((s,i)=>`
+    <div class="staff-card ${s.onShift?'on':''}" onclick="toggleStaff(${i})">
+      <div class="staff-name">${s.name}</div>
+      <div class="staff-status">${s.onShift?'✓ On shift':'Off'}</div>
+    </div>`).join('');
+  document.getElementById('staff-mgmt').style.display=isManager?'block':'none';
+  if(isManager)renderStaffRemoveList();
+}
+function renderStaffRemoveList(){
+  document.getElementById('staff-remove-list').innerHTML=state.staff.map((s,i)=>`
+    <div class="staff-remove-item"><span>${s.name}</span>
+    <button class="staff-remove-btn" onclick="removeStaff(${i})">Remove</button></div>`).join('');
+}
+function toggleStaff(i){state.staff[i].onShift=!state.staff[i].onShift;saveState();renderStaff();if(DAY_KEYS.includes(currentTab))renderDay(DAYS[DAY_KEYS.indexOf(currentTab)]);queueSheetSync();}
+function clearAllShifts(){state.staff.forEach(s=>s.onShift=false);saveState();renderStaff();queueSheetSync();}
+
+// ── ROTA CREW (pre-fill on-shift from tonight's rota; night counts until 7am) ──
+const SHIFTS_URL='../rotas/shifts.json';
+let rotaShifts=null;
+function rotaDayISO(){
+  const n=new Date(), d=new Date(n);
+  if(n.getHours()<7) d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function tonightCrew(){ const days=(rotaShifts&&rotaShifts.days)||{}; return (days[rotaDayISO()]||[]).map(x=>x.name); }
+async function loadShifts(){ try{const r=await fetch(SHIFTS_URL+'?t='+Date.now()); if(r.ok) rotaShifts=await r.json();}catch(e){} }
+function applyRotaCrew(replace){
+  const crew=tonightCrew();
+  if(!crew.length){ showSync('No rota crew for tonight','err'); return; }
+  const set=new Set(crew.map(n=>n.toLowerCase()));
+  state.staff.forEach(s=>{ if(set.has(s.name.toLowerCase())) s.onShift=true; else if(replace) s.onShift=false; });
+  saveState(); renderStaff();
+  if(DAY_KEYS.includes(currentTab)) renderDay(DAYS[DAY_KEYS.indexOf(currentTab)]);
+  queueSheetSync(); showSync('Tonight\u2019s crew set','ok');
+}
+async function maybeSeedShifts(){
+  await loadShifts();
+  if(tonightCrew().length && !state.staff.some(s=>s.onShift)) applyRotaCrew(true);  // auto-fill only when nobody is on yet
+}
+function addStaffMember(){
+  const inp=document.getElementById('new-staff-input');const name=inp.value.trim();if(!name)return;
+  if(state.staff.find(s=>s.name.toLowerCase()===name.toLowerCase())){showSync('Already exists','err');return;}
+  state.staff.push({name,onShift:false});saveState();inp.value='';renderStaff();queueSheetSync();showSync('Added','ok');
+}
+function removeStaff(i){
+  const name=state.staff[i].name;
+  showModal('Remove Staff','Remove '+name+'?',()=>{state.staff.splice(i,1);saveState();closeModal();renderStaff();queueSheetSync();});
+}
+
+// ── JOBS ──
+function renderDay(day){
+  const dk=day.toLowerCase(),el=document.getElementById('page-'+dk);
+  const jobs=state.jobs.filter(j=>j.day===day);
+  const onShift=state.staff.filter(s=>s.onShift).map(s=>s.name);
+  const done=jobs.filter(j=>j.done).length;
+  const signOff=getSignOff('eon-signoff-'+dk);
+
+  // Sign-off card — always at bottom, looks like a job card but distinct
+  const signOffCard=signOff
+    ?`<div class="job-card" style="border-color:var(--green);background:var(--green-dim);margin-top:4px;">
+        <div class="job-done-toggle done">
+          <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="job-info">
+          <div class="job-name" style="color:var(--green)">✦ Manager Sign-Off</div>
+          <div class="job-assignee assigned">${signOff}</div>
+        </div>
+        <div class="job-controls">
+          <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="clearSignOff('eon-signoff-${dk}','${day}','${dk}')">Undo</button>
+        </div>
+      </div>`
+    :`<div class="job-card" style="border-color:var(--red);border-style:dashed;margin-top:4px;animation:glow-pulse 2s ease-in-out infinite;">
+        <div class="job-done-toggle">
+          <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="job-info">
+          <div class="job-name" style="color:var(--red)">✦ Manager Sign-Off</div>
+          <div class="job-assignee">Not signed off</div>
+        </div>
+        <div class="job-controls">
+          <select class="assign-select" onchange="doSignOffByName('eon-signoff-${dk}','${day}','${dk}',this.value)">
+            <option value="">— Sign Off —</option>
+            ${onShift.map(n=>`<option value="${n}">${n}</option>`).join('')}
+          </select>
+        </div>
+      </div>`;
+
+  el.innerHTML=`
+    <div class="jobs-header">
+      <div class="section-title">${day}</div>
+      <div class="jobs-meta"><div class="pill todo">${jobs.length-done} to do</div><div class="pill done">${done} done</div></div>
+    </div>
+    <div class="job-list">${jobs.map(j=>jobCard(j,onShift,dk)).join('')}</div>
+    ${signOffCard}
+    ${isManager?`<div class="add-job-row">
+      <input class="add-job-input" id="new-job-${dk}" placeholder="Add a job for ${day}…" onkeydown="if(event.key==='Enter')addJob('${day}','${dk}')"/>
+      <button class="btn btn-accent" onclick="addJob('${day}','${dk}')">+ Add</button>
+    </div>`:''}
+    <div class="notes-section">
+      <div class="notes-title">📝 Handover Notes</div>
+      <div id="handover-list-${dk}" class="ho-list"><div class="muted-text" style="font-size:13px">Loading…</div></div>
+      <div class="ho-add">
+        <select class="assign-select" id="ho-author-${dk}"><option value="">— Your name —</option>${onShift.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+        <textarea class="notes-textarea" id="ho-ta-${dk}" placeholder="Add a handover note for day staff…"></textarea>
+        <div class="notes-save-row">
+          <button class="btn btn-accent" onclick="addHandover('${day}','${dk}')">Add Note</button>
+          <span class="notes-saved" id="ho-saved-${dk}">✓ Added</span>
+        </div>
+      </div>
+    </div>`;
+  loadHandover(day);
+}
+
+function getSignOff(key){return localStorage.getItem(key)||'';}
+function doSignOffByName(key,day,dk,name){
+  if(!name)return;
+  const ts=new Date().toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  localStorage.setItem(key,name+' · '+ts);
+  renderDay(DAYS[DAY_KEYS.indexOf(dk)]);
+  // Check if all jobs for this day are done
+  const dayJobs=state.jobs.filter(j=>j.day===day);
+  const allDone=dayJobs.length>0&&dayJobs.every(j=>j.done);
+  if(allDone) triggerCelebration(day);
+}
+function clearSignOff(key,day,dk){localStorage.removeItem(key);renderDay(DAYS[DAY_KEYS.indexOf(dk)]);}
+
+function jobCard(j,onShift,dk){
+  const opts=['<option value="">— Assign —</option>',...onShift.map(n=>`<option value="${n}"${j.assignedTo===n?' selected':''}>${n}</option>`)].join('');
+  const del=isManager?`<button class="move-btn" style="color:var(--red)" title="Delete" onclick="deleteJob(${j.id},'${dk}')">✕</button>`:'';
+  const mv=isManager?`<button class="move-btn" onclick="moveJob(${j.id},'${dk}',-1)">◀</button><button class="move-btn" onclick="moveJob(${j.id},'${dk}',1)">▶</button>`:'';
+  return`<div class="job-card ${j.done?'done-card':''}" id="jcard-${j.id}">
+    <div class="job-done-toggle ${j.done?'done':''}">
+      <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5l3.5 3.5L11 1" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="job-info">
+      <div class="job-name">${j.job}</div>
+      <div class="job-assignee ${j.assignedTo?'assigned':''}">${j.assignedTo||'Unassigned'}${j.timestamp?' · '+fmtTime(j.timestamp):''}</div>
+    </div>
+    <div class="job-controls">
+      <select class="assign-select" onchange="assignJob(${j.id},'${dk}',this.value)">${opts}</select>
+      ${mv}
+      ${del}
+    </div>
+  </div>`;
+}
+
+function fmtTime(ts){if(!ts)return'';return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function assignJob(id,dk,name){const j=state.jobs.find(j=>j.id===id);if(!j)return;j.assignedTo=name;j.done=!!name;j.timestamp=name?new Date().toISOString():'';saveState();renderDay(DAYS[DAY_KEYS.indexOf(dk)]);queueSheetSync();}
+function moveJob(id,dk,dir){const j=state.jobs.find(j=>j.id===id);if(!j)return;const ni=DAYS.indexOf(j.day)+dir;if(ni<0||ni>=DAYS.length)return;j.day=DAYS[ni];saveState();renderDay(DAYS[DAY_KEYS.indexOf(dk)]);queueSheetSync();}
+function deleteJob(id,dk){state.jobs=state.jobs.filter(j=>j.id!==id);saveState();renderDay(DAYS[DAY_KEYS.indexOf(dk)]);queueSheetSync();}
+function addJob(day,dk){const inp=document.getElementById('new-job-'+dk);const name=inp.value.trim();if(!name)return;const maxId=state.jobs.reduce((m,j)=>Math.max(m,j.id),0);state.jobs.push({id:maxId+1,day,job:name,assignedTo:'',done:false,timestamp:'',notes:'',homeDay:day});saveState();inp.value='';renderDay(DAYS[DAY_KEYS.indexOf(dk)]);queueSheetSync();}
+
+// ── HANDOVER NOTES (shared via the notes sheet) ──
+const HANDOVER_APP='End Of Night';
+let handoverNotes=[], handoverLoaded=false;
+
+async function fetchHandover(){
+  try{
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),8000);
+    const res=await fetch(NOTES_SCRIPT_URL+'?action=getShared&_='+Date.now(),{signal:ctrl.signal});
+    clearTimeout(t);
+    const data=await res.json();
+    if(data&&data.ok){ handoverNotes=Array.isArray(data.notes)?data.notes:[]; handoverLoaded=true; return true; }
+  }catch(e){}
+  return false;
+}
+function handoverFor(day){ return handoverNotes.filter(n=>n&&n.src===HANDOVER_APP&&n.day===day); }
+
+async function loadHandover(day){
+  if(handoverLoaded) renderHandoverList(day);   // show cache immediately
+  await fetchHandover();
+  renderHandoverList(day);                        // refresh with latest
+}
+function renderHandoverList(day){
+  const dk=day.toLowerCase();
+  const box=document.getElementById('handover-list-'+dk);
+  if(!box) return;
+  if(!handoverLoaded){ box.innerHTML='<div class="muted-text" style="font-size:13px">Loading…</div>'; return; }
+  const list=handoverFor(day);
+  if(!list.length){ box.innerHTML='<div class="muted-text" style="font-size:13px">No handover notes yet.</div>'; return; }
+  box.innerHTML=list.map(n=>{
+    const meta=[n.author,n.time].filter(Boolean).join(' · ');
+    const ctrl=isManager?`<div class="ho-controls">
+        <button class="move-btn" title="Edit" onclick="editHandover('${n.id}','${dk}')">✏</button>
+        <button class="move-btn" style="color:var(--red)" title="Delete" onclick="deleteHandover('${n.id}','${day}')">✕</button>
+      </div>`:'';
+    return `<div class="ho-item" id="ho-${n.id}">
+      <div class="ho-body">
+        <div class="ho-meta">${escHtml(meta||'Note')}</div>
+        <div class="ho-text">${escHtml(n.note||'')}</div>
+      </div>${ctrl}
+    </div>`;
+  }).join('');
+}
+
+async function addHandover(day,dk){
+  const ta=document.getElementById('ho-ta-'+dk);
+  const text=(ta&&ta.value||'').trim();
+  if(!text) return;
+  const sel=document.getElementById('ho-author-'+dk);
+  const author=sel?sel.value:'';
+  const saved=document.getElementById('ho-saved-'+dk);
+  if(saved){ saved.textContent='Adding…'; saved.style.display='inline'; }
+  let ok=false;
+  try{
+    const res=await fetch(NOTES_SCRIPT_URL,{method:'POST',body:JSON.stringify({board:'notes',op:'add',src:HANDOVER_APP+' - '+day,author:author,note:text})});
+    const data=await res.json();
+    if(data&&data.ok){ ok=true; handoverNotes=Array.isArray(data.notes)?data.notes:handoverNotes; handoverLoaded=true; }
+  }catch(e){}
+  if(ok){ ta.value=''; if(saved)saved.textContent='✓ Added'; renderHandoverList(day); }
+  else if(saved){ saved.textContent='Couldn’t save — try again'; }
+  if(saved) setTimeout(()=>{saved.style.display='none';saved.textContent='✓ Added';},2500);
+}
+
+function editHandover(id,dk){
+  if(!isManager){ BLAuth.requireManager(function(){}, 'Manager PIN to edit notes'); return; }
+  const n=handoverNotes.find(x=>String(x.id)===String(id));
+  const row=document.getElementById('ho-'+id);
+  if(!n||!row) return;
+  row.innerHTML=`<div class="ho-body" style="width:100%">
+      <textarea class="notes-textarea" id="ho-edit-${id}">${escHtml(n.note||'')}</textarea>
+      <div class="notes-save-row">
+        <button class="btn btn-accent" onclick="saveHandoverEdit('${id}','${dk}')">Save</button>
+        <button class="btn btn-ghost" onclick="renderHandoverList(DAYS[DAY_KEYS.indexOf('${dk}')])">Cancel</button>
+      </div>
+    </div>`;
+}
+async function saveHandoverEdit(id,dk){
+  if(!isManager) return;
+  const day=DAYS[DAY_KEYS.indexOf(dk)];
+  const ta=document.getElementById('ho-edit-'+id);
+  const text=(ta&&ta.value||'').trim();
+  try{
+    const res=await fetch(NOTES_SCRIPT_URL,{method:'POST',body:JSON.stringify({board:'notes',op:text?'edit':'delete',id:id,note:text})});
+    const data=await res.json();
+    if(data&&data.ok) handoverNotes=Array.isArray(data.notes)?data.notes:handoverNotes;
+  }catch(e){}
+  renderHandoverList(day);
+}
+function deleteHandover(id,day){
+  if(!isManager){ BLAuth.requireManager(function(){}, 'Manager PIN to delete notes'); return; }
+  showModal('Delete note','Delete this handover note?',async()=>{
+    closeModal();
+    try{
+      const res=await fetch(NOTES_SCRIPT_URL,{method:'POST',body:JSON.stringify({board:'notes',op:'delete',id:id})});
+      const data=await res.json();
+      if(data&&data.ok) handoverNotes=Array.isArray(data.notes)?data.notes:handoverNotes;
+    }catch(e){}
+    renderHandoverList(day);
+  });
+}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── SUMMARY ──
+function renderSummary(){
+  document.getElementById('summary-grid').innerHTML=DAYS.map(day=>{
+    const jobs=state.jobs.filter(j=>j.day===day),done=jobs.filter(j=>j.done).length,pct=jobs.length?Math.round(done/jobs.length*100):0;
+    return`<div class="summary-card"><div class="summary-day">${day}</div><div class="summary-bar-track"><div class="summary-bar-fill" style="width:${pct}%"></div></div><div class="summary-stats"><span>${done}</span>/${jobs.length} (${pct}%)</div></div>`;
+  }).join('');
+  const counts={};
+  state.jobs.forEach(j=>{if(j.assignedTo){if(!counts[j.assignedTo])counts[j.assignedTo]={total:0,done:0};counts[j.assignedTo].total++;if(j.done)counts[j.assignedTo].done++;}});
+  document.getElementById('staff-job-summary').innerHTML=Object.entries(counts).sort((a,b)=>b[1].total-a[1].total)
+    .map(([n,c])=>`<div class="staff-row"><div class="staff-row-name">${n}</div><div class="staff-row-count"><span>${c.done}</span>/${c.total}</div></div>`).join('')
+    ||'<div style="color:var(--muted);font-size:13px">No jobs assigned yet.</div>';
+}
+
+// ── SETTINGS ──
+function renderSettings(){
+  document.getElementById('sheet-id-input').value=sheetId||'';
+  document.getElementById('script-url-input').value=scriptUrl||'';
+  const e=document.getElementById('email-input');if(e)e.value=emailAddr||'';
+}
+function saveSheetId(){sheetId=document.getElementById('sheet-id-input').value.trim();localStorage.setItem('bl_eon_sheet_id',sheetId);if(sheetId){showSync('Connecting…','pending');loadFromSheet();}}
+function saveScriptUrl(){scriptUrl=document.getElementById('script-url-input').value.trim();localStorage.setItem('bl_eon_script_url',scriptUrl);showSync('Saved','ok');}
+function saveEmail(){emailAddr=document.getElementById('email-input').value.trim();localStorage.setItem('bl_eon_email',emailAddr);showSync('Saved','ok');}
+
+// ── SHEET READ ──
+async function loadFromSheet(){
+  if(!sheetId)return;
+  try{
+    const[sr,jr]=await Promise.all([
+      fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Staff`),
+      fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Jobs`)
+    ]);
+    if(!sr.ok||!jr.ok)throw new Error();
+    parseStaffCSV(await sr.text());parseJobsCSV(await jr.text());
+    // Safety net: if the sheet was empty, fall back to the built-in defaults
+    if(!state.jobs||!state.jobs.length){state.jobs=DEFAULT_JOBS.map(j=>({...j,assignedTo:'',done:false,timestamp:'',notes:''}));}
+    saveState();
+    document.getElementById('gsStatus').textContent='✓ Connected';
+    document.getElementById('gsStatus').className='gs-status connected';
+    showSync('Loaded','ok');switchTab(currentTab);
+  }catch(e){
+    document.getElementById('gsStatus').textContent='⚠ Error';
+    document.getElementById('gsStatus').className='gs-status error';
+  }
+}
+function parseStaffCSV(csv){const lines=csv.split('\n').slice(1).filter(l=>l.trim()&&!l.includes('Set OnShift'));const p=lines.map(l=>{const c=parseCSV(l);const name=clean(c[0]);const onShift=clean(c[1]).toUpperCase()==='TRUE';return name?{name,onShift}:null;}).filter(Boolean);if(p.length)state.staff=p;}
+function parseJobsCSV(csv){const lines=csv.split('\n').slice(1).filter(l=>l.trim());const p=lines.map(l=>{const c=parseCSV(l);const id=parseInt(c[0]);const day=normDay(c[1]);const job=clean(c[2]);if(!id||!day||!job||!DAYS.includes(day))return null;const homeDay=DAYS.includes(normDay(c[8]))?normDay(c[8]):day;return{id,day,job,assignedTo:clean(c[3]),done:clean(c[4]).toUpperCase()==='TRUE',notes:clean(c[5]),timestamp:clean(c[6]),homeDay};}).filter(Boolean);if(p.length)state.jobs=p;}
+
+// ── SHEET WRITE ──
+function queueSheetSync(){if(syncTimer)clearTimeout(syncTimer);syncTimer=setTimeout(pushToSheet,1500);}
+async function pushToSheet(){
+  if(!scriptUrl)return;showSync('Saving…','pending');
+  try{await fetch(scriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({staff:state.staff,jobs:state.jobs,newJobs:state.jobs.filter(j=>j.id>185)})});showSync('Saved ✓','ok');}
+  catch(e){showSync('Save failed','err');}
+}
+async function saveStaffToSheet(){await pushToSheet();}
+
+// ── EMAIL ──
+async function sendEmailReport(){
+  const addr=localStorage.getItem('bl_eon_email')||'';
+  await fetchHandover();
+  let body='BANSHEE SOUND TECH — END OF NIGHT REPORT\n';
+  body+='Generated: '+new Date().toLocaleString('en-GB')+'\n'+'='.repeat(44)+'\n\n';
+  DAYS.forEach(day=>{
+    const jobs=state.jobs.filter(j=>j.day===day),done=jobs.filter(j=>j.done).length;
+    body+=`${day.toUpperCase()}  —  ${done}/${jobs.length}\n${'-'.repeat(36)}\n`;
+    jobs.forEach(j=>{body+=`  ${j.done?'✅':'❌'} ${j.job}${j.assignedTo?' — '+j.assignedTo:''}\n`;});
+    handoverFor(day).forEach(n=>{body+=`  📝 ${n.author?n.author+': ':''}${n.note}\n`;});
+    body+='\n';
+  });
+  body+='\n— Banshee Sound Tech Staff App';
+  const addrs=addr.split('\n').map(a=>a.trim()).filter(Boolean).join(',');
+  window.location.href=`mailto:${addrs}?subject=${encodeURIComponent('Banshee — End Of Night Report')}&body=${encodeURIComponent(body)}`;
+}
+
+// ── RESET / EXPORT ──
+function confirmWeeklyReset(){
+  showModal('Weekly Reset','Clears all assignments and resets the week. Continue?',()=>{
+    state.jobs.forEach(j=>{j.done=false;j.assignedTo='';j.timestamp='';j.notes='';if(j.homeDay)j.day=j.homeDay;});
+    state.staff.forEach(s=>s.onShift=false);
+    saveState();closeModal();switchTab('staff');showSync('Reset complete','ok');
+    pushToSheet();
+  });
+}
+function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));a.download=`banshee-eon-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();}
+
+// ── UI HELPERS ──
+let syncHide;
+function showSync(msg,st){const b=document.getElementById('syncBanner');document.getElementById('syncDot').className='sync-dot '+(st==='ok'?'ok':st==='err'?'err':'');document.getElementById('syncMsg').textContent=msg;b.classList.add('show');if(syncHide)clearTimeout(syncHide);if(st!=='pending')syncHide=setTimeout(()=>b.classList.remove('show'),2500);}
+function showModal(title,body,onOk){document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').textContent=body;document.getElementById('modal-confirm-btn').onclick=onOk;document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+
+// ── CELEBRATION ──
+let fwAnim=null,celTimer=null,celCountdown=null;
+
+function triggerCelebration(day){
+  // Find MVP — staff member with most done jobs that day
+  const counts={};
+  state.jobs.filter(j=>j.day===day&&j.done&&j.assignedTo).forEach(j=>{counts[j.assignedTo]=(counts[j.assignedTo]||0)+1;});
+  const mvp=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  const mvpEl=document.getElementById('cel-mvp');
+  if(mvp) mvpEl.textContent=`🏆 Thanks ${mvp[0]} — ${mvp[1]} job${mvp[1]>1?'s':''} smashed tonight!`;
+  else mvpEl.textContent='';
+
+  // Show overlay
+  const cel=document.getElementById('celebration');
+  cel.style.display='flex';
+
+  // Countdown
+  let secs=5;
+  const countEl=document.getElementById('cel-countdown');
+  countEl.textContent=`Auto-dismissing in ${secs}s`;
+  celCountdown=setInterval(()=>{secs--;if(secs>0)countEl.textContent=`Auto-dismissing in ${secs}s`;},1000);
+  celTimer=setTimeout(dismissCelebration,5000);
+
+  // Fireworks
+  startFireworks();
+}
+
+function dismissCelebration(){
+  clearTimeout(celTimer);clearInterval(celCountdown);
+  stopFireworks();
+  document.getElementById('celebration').style.display='none';
+  document.getElementById('cel-countdown').textContent='';
+}
+
+function startFireworks(){
+  const canvas=document.getElementById('fireworks-canvas');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const ctx=canvas.getContext('2d');
+  const particles=[];
+
+  function Particle(x,y,color){
+    this.x=x;this.y=y;this.color=color;
+    const angle=Math.random()*Math.PI*2;
+    const speed=Math.random()*6+2;
+    this.vx=Math.cos(angle)*speed;this.vy=Math.sin(angle)*speed;
+    this.alpha=1;this.decay=Math.random()*0.015+0.01;
+    this.radius=Math.random()*3+1;
+  }
+
+  function burst(){
+    const x=Math.random()*canvas.width;
+    const y=Math.random()*canvas.height*0.6+50;
+    const colors=['#e8b84b','#e85d5d','#3ecf6e','#a78bfa','#ffffff','#60a5fa','#f97316'];
+    const color=colors[Math.floor(Math.random()*colors.length)];
+    for(let i=0;i<60;i++) particles.push(new Particle(x,y,color));
+  }
+
+  let burstCount=0;
+  const burstInterval=setInterval(()=>{burst();burstCount++;if(burstCount>=10)clearInterval(burstInterval);},400);
+  burst();burst(); // immediate double burst on open
+
+  function draw(){
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;p.alpha-=p.decay;
+      if(p.alpha<=0){particles.splice(i,1);continue;}
+      ctx.save();ctx.globalAlpha=p.alpha;ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+    fwAnim=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopFireworks(){
+  if(fwAnim){cancelAnimationFrame(fwAnim);fwAnim=null;}
+  const canvas=document.getElementById('fireworks-canvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+</script>
+</body>
+</html>

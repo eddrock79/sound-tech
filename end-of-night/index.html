@@ -588,13 +588,14 @@ async function loadPins(){
 }
 
 // ── BOOT — same pattern as Weekly Jobs ──
-(function boot(){
+(async function boot(){
+  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // wait for central config before reading sheet IDs
   // Each app is hard-pinned to its OWN sheet. The ?sheet= URL param is
   // ignored on purpose — it used to let the wrong ID leak in between apps.
   const MY_SHEET=BL_CFG.endOfNight;
   const OTHER_SHEET=BL_CFG.weeklyJobs;
   let stored=localStorage.getItem('bl_eon_sheet_id')||'';
-  if(!stored || stored===OTHER_SHEET) stored=MY_SHEET;  // auto-heal cross-contamination
+  if(!stored || stored===OTHER_SHEET || (''+stored).indexOf('PUT_')===0) stored=MY_SHEET;  // auto-heal cross-contamination + reject placeholder
   localStorage.setItem('bl_eon_sheet_id',stored);
   sheetId=stored;
   BLAuth.init({appName:'End of Night', require:'staff', onReady:function(){ showApp(); }});

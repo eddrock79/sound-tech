@@ -222,15 +222,16 @@ function parseCSV(line){const cols=[];let cur='',inQ=false;for(let i=0;i<line.le
 function clean(s){return(s||'').replace(/^"|"$/g,'').trim();}
 
 // ── BOOT — no PIN needed, dashboard is manager-only via home page ──
-(function boot(){
+(async function boot(){
+  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // wait for central config before reading sheet IDs
   // Dashboard is hard-pinned to both sheets; the ?sheet= param is ignored,
   // and each stored ID auto-heals if it ever ends up holding the wrong sheet.
   const WJ=BL_CFG.weeklyJobs;
   const EON=BL_CFG.endOfNight;
   let w=localStorage.getItem('bl_dash_wj_sheet')||'';
   let e=localStorage.getItem('bl_dash_eon_sheet')||'';
-  if(!w || w===EON) w=WJ;
-  if(!e || e===WJ) e=EON;
+  if(!w || w===EON || (''+w).indexOf('PUT_')===0) w=WJ;
+  if(!e || e===WJ || (''+e).indexOf('PUT_')===0) e=EON;
   localStorage.setItem('bl_dash_wj_sheet',w);
   localStorage.setItem('bl_dash_eon_sheet',e);
   wjSheetId=w; eonSheetId=e;

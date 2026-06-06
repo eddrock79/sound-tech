@@ -216,12 +216,12 @@
     </div>
   </div>
   <div class="nav-bar">
-    <button class="nav-btn" type="button" onclick="BLAuth.switchVenue()" style="cursor:pointer">🏘️ Switch Venue</button>
     <a class="nav-btn" id="nav-home" href="../home">🏠 Home</a>
     <span class="nav-btn current">📋 Weekly Jobs</span>
     <a class="nav-btn" href="../end-of-night">🌙 End Of Night</a>
     <a class="nav-btn" href="../rotas">📅 Rotas</a>
     <a class="nav-btn" id="nav-dash" href="../dashboard" style="display:none;background:var(--purple-dim);color:var(--purple);border-color:var(--purple)">📊 Dashboard</a>
+    <button class="nav-btn" type="button" onclick="BLAuth.switchVenue()" style="cursor:pointer">🏘️ Switch Venue</button>
     <button class="nav-btn" id="nav-logout" onclick="logOut()" style="display:none;cursor:pointer;color:var(--red);border-color:var(--red)">🔒 Log Out</button>
   </div>
   <div class="tabbar">
@@ -404,7 +404,6 @@ async function loadPins(){
 // ── BOOT ──
 (async function boot(){
   if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // load central config first
-  // CONFIG IS AUTHORITATIVE: config value always wins; cached box only as fallback.
   const cfg=BL_CFG.weeklyJobs;
   sheetId=(cfg && (''+cfg).indexOf('PUT_')!==0) ? cfg : (localStorage.getItem('bl_sheet_id')||'');
   BLAuth.init({appName:'Weekly Jobs', require:'staff', onReady:function(){ showApp(); }});
@@ -740,8 +739,8 @@ function renderSettings(){
   const su=document.getElementById('script-url-input');if(su){su.value=scriptUrl||'';su.readOnly=true;su.title='Set centrally in the Haunted Pubs config sheet';}
   const e=document.getElementById('email-input');if(e)e.value=emailAddr||'';
 }
-function saveSheetId(){showSync('Set in config sheet','ok');}  // config-authoritative; display-only
-function saveScriptUrl(){showSync('Set in config sheet','ok');}  // config-authoritative; display-only
+function saveSheetId(){showSync('Set in config sheet','ok');}
+function saveScriptUrl(){showSync('Set in config sheet','ok');}
 function saveEmail(){emailAddr=document.getElementById('email-input').value.trim();localStorage.setItem('bl_email',emailAddr);showSync('Saved','ok');}
 
 // ── SHEET READ ──

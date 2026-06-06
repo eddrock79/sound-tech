@@ -21,8 +21,9 @@
    ============================================================ */
 (function () {
   // PINs come from bl-config.js via window.BL_CFG.
-  const AUTH_KEY     = 'bl_auth';        // {role, ts}
-  const PIN_CACHE    = 'bl_pin_cache';   // {staff, manager, ts}
+  const AUTH_KEY     = 'bl_auth_'+((window.BL_CFG&&BL_CFG.venueKey)||'v');        // VENUE-SCOPED {role, ts}
+  const PIN_CACHE    = 'bl_pin_cache_'+((window.BL_CFG&&BL_CFG.venueKey)||'v');   // VENUE-SCOPED {staff, manager, ts}
+  try{localStorage.removeItem('bl_auth');localStorage.removeItem('bl_pin_cache');}catch(e){}  // wipe legacy shared keys (pre venue-scoping)
   const FETCH_MS     = 7000;             // give up on the sheet after 7s
   const FALLBACK     = { staff: '1234', manager: '1111' };
 
@@ -79,7 +80,9 @@
     .bla-chip.mgr b{color:#a78bfa}
     .bla-logout{border:1px solid #2a2a30;background:#17171a;color:#e8e8ec;border-radius:14px;
       padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
-    .bla-logout:hover{border-color:#e85d5d;color:#e85d5d}`;
+    .bla-logout:hover{border-color:#e85d5d;color:#e85d5d}
+    .bla-switch{margin-top:10px;font-size:13px;color:#6b6b78;background:none;border:1px solid #2a2a30;border-radius:10px;padding:9px 16px;cursor:pointer;letter-spacing:1px;font-family:inherit}
+    .bla-switch:hover{color:#e8e8ec;border-color:#3a3a42}`;
     const s = document.createElement('style'); s.id = 'bl-auth-style'; s.textContent = css;
     document.head.appendChild(s);
   }
@@ -104,9 +107,10 @@
         <button class="bla-key zero" data-k="0">0</button>
         <button class="bla-key del" data-k="del">⌫</button>
       </div>
-      <div id="bla-extra"></div>`;
+      <div id="bla-extra"><button class="bla-switch" id="bla-switch" type="button">⌂ Switch venue ▸</button></div>`;
     document.body.appendChild(o);
     o.querySelectorAll('.bla-key').forEach(b => b.addEventListener('click', () => press(b.dataset.k)));
+    var _sw=document.getElementById('bla-switch'); if(_sw) _sw.addEventListener('click', function(){ BLAuth.switchVenue(); });
     document.addEventListener('keydown', physicalKey);
     return o;
   }
@@ -280,6 +284,7 @@
     isManager, isMaster,
     isStaff(){ const a=getAuth(); return !!a && (a.role==='staff'||a.role==='manager'); },
     logout(){ localStorage.removeItem(AUTH_KEY); location.reload(); },
+    switchVenue(){ try{localStorage.removeItem(AUTH_KEY);localStorage.removeItem(PIN_CACHE);sessionStorage.clear();}catch(e){} location.href='/'; },
     applyRoleVisibility,
     refreshChip
   };

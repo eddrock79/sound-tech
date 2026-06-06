@@ -402,15 +402,10 @@ async function loadPins(){
 
 // ── BOOT ──
 (async function boot(){
-  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // wait for central config before reading sheet IDs
-  // Each app is hard-pinned to its OWN sheet. The ?sheet= URL param is
-  // ignored on purpose — it used to let the wrong ID leak in between apps.
-  const MY_SHEET=BL_CFG.weeklyJobs;
-  const OTHER_SHEET=BL_CFG.endOfNight;
-  let stored=localStorage.getItem('bl_sheet_id')||'';
-  if(!stored || stored===OTHER_SHEET || (''+stored).indexOf('PUT_')===0) stored=MY_SHEET;  // auto-heal cross-contamination + reject placeholder
-  localStorage.setItem('bl_sheet_id',stored);
-  sheetId=stored;
+  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // load central config first
+  // CONFIG IS AUTHORITATIVE: config value always wins; cached box only as fallback.
+  const cfg=BL_CFG.weeklyJobs;
+  sheetId=(cfg && (''+cfg).indexOf('PUT_')!==0) ? cfg : (localStorage.getItem('bl_sheet_id')||'');
   BLAuth.init({appName:'Weekly Jobs', require:'staff', onReady:function(){ showApp(); }});
 })();
 
@@ -467,9 +462,9 @@ function logOut(){
 // ── APP INIT ──
 function initApp(){
   state=loadState();
-  sheetId=localStorage.getItem('bl_sheet_id')||'';
+  sheetId=(BL_CFG.weeklyJobs && (''+BL_CFG.weeklyJobs).indexOf('PUT_')!==0) ? BL_CFG.weeklyJobs : (localStorage.getItem('bl_sheet_id')||'');
   emailAddr=localStorage.getItem('bl_email')||'';
-  scriptUrl=localStorage.getItem('bl_script_url')||BL_CFG.cleaningScript;
+  scriptUrl=(BL_CFG.cleaningScript && (''+BL_CFG.cleaningScript).indexOf('PUT_')!==0) ? BL_CFG.cleaningScript : (localStorage.getItem('bl_script_url')||'');
   // Set home nav link
   const homeId=localStorage.getItem('bl_sheet_id')||'';
   document.getElementById('nav-home').href=homeId
@@ -740,12 +735,12 @@ function renderSummary(){
 
 // ── SETTINGS ──
 function renderSettings(){
-  document.getElementById('sheet-id-input').value=sheetId||'';
-  document.getElementById('script-url-input').value=scriptUrl||'';
+  const si=document.getElementById('sheet-id-input');if(si){si.value=sheetId||'';si.readOnly=true;si.title='Set centrally in the Haunted Pubs config sheet';}
+  const su=document.getElementById('script-url-input');if(su){su.value=scriptUrl||'';su.readOnly=true;su.title='Set centrally in the Haunted Pubs config sheet';}
   const e=document.getElementById('email-input');if(e)e.value=emailAddr||'';
 }
-function saveSheetId(){sheetId=document.getElementById('sheet-id-input').value.trim();localStorage.setItem('bl_sheet_id',sheetId);if(sheetId){showSync('Connecting…','pending');loadFromSheet();}}
-function saveScriptUrl(){scriptUrl=document.getElementById('script-url-input').value.trim();localStorage.setItem('bl_script_url',scriptUrl);showSync('Saved','ok');}
+function saveSheetId(){showSync('Set in config sheet','ok');}  // config-authoritative; display-only
+function saveScriptUrl(){showSync('Set in config sheet','ok');}  // config-authoritative; display-only
 function saveEmail(){emailAddr=document.getElementById('email-input').value.trim();localStorage.setItem('bl_email',emailAddr);showSync('Saved','ok');}
 
 // ── SHEET READ ──

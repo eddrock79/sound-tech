@@ -341,13 +341,13 @@ async function loadPINFromSheet(id){
 
 // ── BOOT ──
 (async function boot(){
-  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // wait for central config before reading sheet IDs
+  if(window.BLConfig&&BLConfig.refresh){try{await BLConfig.refresh();}catch(e){}}  // load central config first
+  // CONFIG IS AUTHORITATIVE: PINs live in the venue's Weekly Jobs sheet (Settings tab).
   const urlParams=new URLSearchParams(window.location.search);
   const urlSheet=urlParams.get('sheet');
   if(urlSheet)localStorage.setItem(SHEET_ID_KEY,urlSheet);
-  sheetId=localStorage.getItem(SHEET_ID_KEY)||'';
-  if(!sheetId || (''+sheetId).indexOf('PUT_')===0) sheetId=BL_CFG.weeklyJobs;  // default to venue sheet (PINs live in its Settings tab)
-  localStorage.setItem(SHEET_ID_KEY,sheetId);
+  const cfg=BL_CFG.weeklyJobs;
+  sheetId=(cfg && (''+cfg).indexOf('PUT_')!==0) ? cfg : (localStorage.getItem(SHEET_ID_KEY)||'');
   BLAuth.init({appName:'Staff Hub', require:'staff', onReady:function(){ showApp(); }});
 })();
 
